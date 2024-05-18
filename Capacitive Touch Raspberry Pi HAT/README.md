@@ -7,6 +7,7 @@ Run one of these options on the Pi with Python3 installed:
 
 ----------------------------------------------------------------
 Option 1 - Virtual environment (must repeat/activate environment on boot after 1st run):
+
 sudo apt install python3-venv
 cd ~/Desktop/hot
 python3 -m venv venv
