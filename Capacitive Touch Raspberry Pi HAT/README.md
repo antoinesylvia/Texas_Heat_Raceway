@@ -1,5 +1,8 @@
 Bought a MPR121 Pi HAT from Adafruit back in March (https://www.adafruit.com/product/2340), wanted to investigate adding touch capabilities to our setup. 
 
+![Capacitive Touch Raspberry Pi HAT Setup](https://github.com/antoinesylvia/dallas_diecast_labs/blob/9aea386b805420d2079cbb15c74320622cde7e7a/Capacitive%20Touch%20Raspberry%20Pi%20HAT/setup.png)
+
+
 Before use, you must solder the header pins to the Pi HAT. Once complete you can attach alligator clip test leads to the board as shown on the product page an the other side to an electric conductive item like copper tape.
 
 
@@ -43,3 +46,8 @@ Note:
 If a SCL error pops up its due to the wrong board library being installed ("module 'board' has no attribute 'SCL'"), use:
 pip3 uninstall board --break-system-packages
 pip3 install --user --break-system-packages adafruit-blinka    
+---------------------------------------------------------------
+
+Once everything is running, simply touch your electrical conductive item and it should register like this:
+
+![Capacitive Touch Raspberry Pi HAT Setup CLI](https://github.com/antoinesylvia/dallas_diecast_labs/blob/9aea386b805420d2079cbb15c74320622cde7e7a/Capacitive%20Touch%20Raspberry%20Pi%20HAT/CLI.png))
