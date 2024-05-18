@@ -12,6 +12,7 @@ cd ~/Desktop/hot
 python3 -m venv venv
 source venv/bin/activate
 pip3 install adafruit-blinka adafruit-circuitpython-mpr121
+
 python CapacitiveTouchHAT_MPR121.py
 
 ----------------------------------------------------------------
@@ -20,15 +21,20 @@ Option 2 - No virtual environment:
 sudo apt-get update
 sudo apt-get install -y python3-pip python3-dev python3-smbus i2c-tools
 pip3 install --user --break-system-packages -r requirements.txt
+
 python CapacitiveTouchHAT_MPR121.py
 
 ----------------------------------------------------------------
 If not using a requirements file then use:
+
 pip3 install --user --break-system-packages adafruit-blinka adafruit-circuitpython-mpr121 adafruit-circuitpython-busdevice
+
 python CapacitiveTouchHAT_MPR121.py
 
+---------------------------------------------------------------
 Or 1 liner:
 sudo apt-get update && sudo apt-get install -y python3-pip python3-dev python3-venv python3-smbus i2c-tools && pip3 install --user --break-system-packages adafruit-blinka adafruit-circuitpython-mpr121 adafruit-circuitpython-busdevice
+
 python CapacitiveTouchHAT_MPR121.py
 
 ----------------------------------------------------------------
