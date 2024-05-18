@@ -43,9 +43,11 @@ python CapacitiveTouchHAT_MPR121.py
 
 ----------------------------------------------------------------
 Note:
+
 If a SCL error pops up its due to the wrong board library being installed ("module 'board' has no attribute 'SCL'"), use:
 pip3 uninstall board --break-system-packages
-pip3 install --user --break-system-packages adafruit-blinka    
+pip3 install --user --break-system-packages adafruit-blinka
+
 ---------------------------------------------------------------
 
 Once everything is running, simply touch your electrical conductive item and it should register like this:
