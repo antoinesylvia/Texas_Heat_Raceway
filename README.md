@@ -1,7 +1,13 @@
 # Texas Heat Raceway - Automated Diecast Racetrack System
 
 ## Project Overview
-This project implements an automated 6 lane racetrack system for diecast vehicles 1/64 scale, featuring real-time race management, result tracking, audio-visual feedback and more. The track operates outdoors under a covered roof in Dallas, Texas. 
+This project implements an automated 6 lane racetrack system for diecast vehicles 1/64 scale, featuring real-time race management, result tracking, audio-visual feedback and more. The track operates outdoors under a covered roof in Dallas, Texas. The system is comprised of an automated start gate (using Lego motors which uses a Raspberry Pi Build HAT), a checkpoint gate (bottom of the incline, powered via a Raspberry Pi), a finish gate with light sensors (powered by a Tiny Lenovo ThinkCentre, but can be swap out for a Pi) and a central server (serves as the brain of the operation, handles the coordination and race event state between the start gate and finish gate. 
+
+The offshoot of putting this project together, is build an engaging system that can teach children about science. The following will be appended to our main dashboard when completed:
+- For phase 1 we are focused on time, speed and distance (measured). [Currently Testing]
+- For phase 2 we will focus on Gravitational Acceleration (incline drop) and Linear Acceleration (straightaway between checkpoint and finish gate). [Planned]
+- For phase 3 we will focus on Potential Energy, Work Done, ForcePower, Force and G-Force. [Planned]
+- For phase 4 we will focus on Energy Efficiency, Coefficient of Restitution, Heat Generation, Impulse & Jerk, and Terminal Velocity. [Planned]
 
 ## System Integration
 - Central Server coordinates all components and maintains race state
