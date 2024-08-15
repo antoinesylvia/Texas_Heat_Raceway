@@ -146,16 +146,7 @@ The offshoot of putting this project together, is build an engaging system that 
 
 ## Hardware Components
 
-### Finish Gate Setup (Setup 1 of 3)
-- Main Controller: Lenovo ThinkCentre M920q Tiny
-- Microcontroller: Adafruit QT Py - SAMD21 Dev Board with STEMMA QT
-- I2C Multiplexer: Adafruit PCA9548 8-Channel STEMMA QT / Qwiic I2C multiplexer
-- Light Sensors: 6x Adafruit BH1750 Light Sensors
-- LED Strip: USB 5v LED strip (6000k cold white color)
-- Display: Waveshare 11.9inch Capacitive Touch Screen LCD (320x1480)
-- LED Indicators: Adafruit PCF8575 I2C 16 GPIO Expander Breakout
-
-### Start Gate Setup (Setup 2 of 3)
+### Start Gate Setup (Setup 1 of 4)
 - Main Controller: Raspberry Pi 5
 - Motor Controller: Raspberry Pi Build HAT
 - Microcontroller: Adafruit QT Py - SAMD21 Dev Board with STEMMA QT
@@ -164,13 +155,28 @@ The offshoot of putting this project together, is build an engaging system that 
 - Visual Indicator: SparkFun Qwiic LED Stick APA102C (10 RGB LEDs)
 - Motor: Lego Technic Motor for start gate mechanism
 
-### Central Server (Setup 3 of 3)
+### Checkpoint Gate Setup (Setup 2 of 4)
+- Main Controller: Raspberry Pi 5
+- Microcontroller: SparkFun Qwiic / STEMMA QT HAT for Raspberry Pi
+- I2C Multiplexer: Adafruit PCA9548 8-Channel STEMMA QT / Qwiic Multiplexer
+- Light Sensors: 6x Adafruit BH1750 Light Sensors
+
+### Finish Gate Setup (Setup 3 of 4)
+- Main Controller: Lenovo ThinkCentre M920q Tiny
+- Microcontroller: Adafruit QT Py - SAMD21 Dev Board with STEMMA QT
+- I2C Multiplexer: Adafruit PCA9548 8-Channel STEMMA QT / Qwiic I2C multiplexer
+- Light Sensors: 6x Adafruit BH1750 Light Sensors
+- LED Strip: USB 5v LED strip (6000k cold white color)
+- Display: Waveshare 11.9inch Capacitive Touch Screen LCD (320x1480)
+- LED Indicators: Adafruit PCF8575 I2C 16 GPIO Expander Breakout
+
+### Central Server (Setup 4 of 4)
 - Hardware: Lenovo ThinkCentre M920q Tiny (shared with Finish Gate setup)
 
 ## Hardware Setup Instructions
 1. Connect all I2C devices to their respective multiplexers
 2. Ensure proper power supply to all components
-3. Connect Ethernet cables from Finish Gate and Start Gate setups to the outdoor router
+3. Connect Ethernet cables from Finish Gate and Start Gate setups to each other (if you don't want to use a router and not using a checkpoint gate). If using a start gate, checkpoint gate and finish gate, connect all 3 to a router via an ethernet cord.  
 4. Position light sensors and LED indicators at the finish line
 5. Mount the Waveshare display for clear visibility
 6. Install the start gate mechanism with the Lego Technic Motor
@@ -414,19 +420,15 @@ For subsequent runs, the reset button is used to return to the 'Initialization' 
 
 ## Future Enhancements
 
-1. Improved Data Analytics:
-   - [ ] Enhance the existing analytics dashboard with historical trends, comparison tools, and visual data representations.
+1. Improved Data Analytics: Enhance the existing analytics dashboard with historical trends, comparison tools, and visual data representations.
 
-2. Data model integration:
-- [ ] Integrate Google's image recognition API for automatic car identification and naming.
+2. Data model integration: Integrate Google's image recognition API for automatic car identification and naming. We would also fine tune a model and use our local compute resources.
 
-3. Text to Speech
-- [ ] 
+3. Text to Speech: TBD
 
-4. Usage of more formulas for making this project more STEM friendly.
-- [ ] Requires an additional checkpoint gate (at the end of an incline) then we'll be able to measure Gravitational Acceleration and (linear) Acceleration. This would open the doors
-to be able to calculate outputs for force, potential energy, work done, power, g-force., friction force, air resistance ,net force, and deceleration. These would support our current items we measure such as 
-speed, kinetic energy, and momentum. 
+4. Drone Coverage: Cover the race with a mini drone.
+
+5. Implementation of formulas for phase 2, 3 and 4: Requires an additional checkpoint gate (at the end of an incline) then we'll be able to measure Gravitational Acceleration and (linear) Acceleration. This would open the doors to be able to calculate outputs for force, potential energy, work done, power, g-force., friction force, air resistance ,net force, deceleration and more. 
 
 ## Contributing
 Please read CONTRIBUTING.md for details on our code of conduct and the process for submitting pull requests.
