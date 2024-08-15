@@ -335,79 +335,80 @@ For subsequent runs, the reset button is used to return to the 'Initialization' 
 ## Temperature and Humidity Monitoring:
    - Weather information section that fetches and displays this data on our dashboard via a periodic OpenWeatherMap API call.
    
-# API Endpoints (Central Server)
 
-## `/` (GET)
+## API Endpoints (Central Server)
+
+#### `/` (GET)
 - **Description**: Renders the main HTML page for the web interface.
 - **Function**: `index()`
 
-## `/get_config` (GET)
+#### `/get_config` (GET)
 - **Description**: Returns the configuration values needed by the start gate.
 - **Function**: `get_config()`
 
-## `/update_state` (POST)
+#### `/update_state` (POST)
 - **Description**: Updates the race state and emits the new state to connected clients. If the state is 'Finished', it automatically transitions to 'Intermission'.
 - **Function**: `update_state()`
 
-## `/get_state` (GET)
+#### `/get_state` (GET)
 - **Description**: Retrieves the current race state from the database (or returns a mock state in test mode).
 - **Function**: `get_state()`
 
-## `/save_results` (POST)
+#### `/save_results` (POST)
 - **Description**: Saves race results to the SQLite database and checks for new records or ties, playing appropriate sounds.
 - **Function**: `save_results()`
 
-## `/update_weight_and_ke` (POST)
+#### `/update_weight_and_ke` (POST)
 - **Description**: Updates the weight and kinetic energy of a car for a given timestamp and lane in the race results.
 - **Function**: `update_weight_and_ke()`
 
-## `/get_records` (GET)
+#### `/get_records` (GET)
 - **Description**: Retrieves all race records from the SQLite database (or returns an empty list in test mode).
 - **Function**: `get_records()`
 
-## `/update_car_names` (POST)
+#### `/update_car_names` (POST)
 - **Description**: Updates the car names for the race.
 - **Function**: `update_car_names()`
 
-## `/update_component_status` (POST)
+#### `/update_component_status` (POST)
 - **Description**: Updates the status of race components (start and finish gates) and potentially transitions the race state if all components are OK.
 - **Function**: `update_component_status()`
 
-## `/get_component_status` (GET)
+#### `/get_component_status` (GET)
 - **Description**: Retrieves the latest component status from the database (or returns an error in test mode).
 - **Function**: `get_component_status()`
 
-## `/reset` (POST)
+#### `/reset` (POST)
 - **Description**: Resets the race state to 'Reset', stops any playing audio, and notifies clients of the state change.
 - **Function**: `reset()`
 
-## `/user_action` (POST)
+#### `/user_action` (POST)
 - **Description**: Handles user actions to transition from 'Reset' to 'Initialization' or from 'Ready' to 'Countdown'.
 - **Function**: `handle_user_action()`
 
-## `/get_weather_config` (GET)
+#### `/get_weather_config` (GET)
 - **Description**: Fetch weather configuration
 - **Function**: `get_weather_config()`
 
-## `/update_config` (POST)
+#### `/update_config` (POST)
 - **Description**: Updates configuration values in the database.
 - **Function**: update_config()
 
-## `/reset_config` (POST)
+#### `/reset_config` (POST)
 - **Description**: Resets all configuration values to defaults from config.py.
 - **Function**: reset_config()
 
-# WebSocket Events
+## WebSocket Events
 
-## `button_press` (SocketIO event)
+#### `button_press` (SocketIO event)
 - **Description**: Handles button press actions to trigger user actions.
 - **Function**: `handle_button_press()`
 
-## `connect` (SocketIO event)
+#### `connect` (SocketIO event)
 - **Description**: Handles a new client connection and emits the current race state to the connected client.
 - **Function**: `handle_connect()`
 
-## `disconnect` (SocketIO event)
+#### `disconnect` (SocketIO event)
 - **Description**: Handles a client disconnection.
 - **Function**: `handle_disconnect()`
 
