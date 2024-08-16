@@ -20,7 +20,7 @@ The offshoot of putting this project together, is build an engaging system that 
 - Web Interface provides real-time updates and user interaction
 - Audio Manager syncs with Central Server for state-appropriate audio cues
 
-# Benefits
+# Key Benefits
 
 ## System
 1. Modular design with clear separation of concerns
