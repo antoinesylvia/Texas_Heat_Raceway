@@ -12,11 +12,12 @@ This project implements an automated 6 lane racetrack system for diecast vehicle
 - Audio manager (plays various sounds based on race state) 
 - Web control interface ran locally
 
-The offshoot of putting this project together, is build an engaging system that can teach children about science. The following will be appended to our main dashboard when completed:
-- Phase 1: Time, speed and distance (measured). [Currently Testing]
-- Phase 2: Gravitational Acceleration (incline drop) and Linear Acceleration (straightaway between checkpoint and finish gate). [Planned]
-- Phase 3: Potential Energy, Work Done, ForcePower, Force and G-Force. [Planned]
-- Phase 4: Energy Efficiency, Coefficient of Restitution, Heat Generation, Impulse & Jerk, and Terminal Velocity. [Planned]
+The development of this project has a key secondary benefit: creating an engaging system that can teach children about science. The following phases will be integrated into our main dashboard as they are completed:
+
+- Phase 1: Measurement of time, speed, and distance. [Currently Testing]
+- Phase 2: Analysis of gravitational acceleration (incline drop) and linear acceleration (straightaway between checkpoint and finish gate). [Planned]
+- Phase 3: Exploration of potential energy, work done, power, force, and g-force. [Planned]
+- Phase 4: Investigation of energy efficiency, coefficient of restitution, heat generation, impulse and jerk, and terminal velocity. [Planned]
 
 # Key Benefits
 
