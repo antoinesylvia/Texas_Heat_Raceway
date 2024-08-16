@@ -39,7 +39,7 @@ The offshoot of putting this project together, is build an engaging system that 
 - Enabled test mode for component isolation
 - Simplified multi-environment deployment
 
-## System Architecture
+# System Architecture
 
 ### 1. Central Server (central_server.py)
 - **Core Functionality**: Main controller for the entire system (all of the codebase flows through this) 
@@ -83,7 +83,7 @@ The offshoot of putting this project together, is build an engaging system that 
 	- Pygame-based graphical interface for result display
 	- Socket.IO integration for real-time communication with the central server
 	
-	Note: Please see section "Finish Gate Threshold Behavior" for more setup instructures.
+	Note: Please see section below "Finish Gate Threshold Behavior" for more setup instructions.
 
 ### 3. Start Gate (start_gate.py)
 - **Core Functionality**: Manages race start procedures and initial countdown
@@ -140,7 +140,7 @@ The offshoot of putting this project together, is build an engaging system that 
   	- Helps fine-tune sensor sensitivity for accurate finish detection
   	- Interactive threshold adjustment for optimal finish detection
 
-## System Integration
+# System Integration
 - Central Server coordinates all components and maintains race state
 - Finish Gate reports to and receives instructions from Central Server
 - Start Gate manages race initiation and reports to Central Server
@@ -148,7 +148,7 @@ The offshoot of putting this project together, is build an engaging system that 
 - Web Interface provides real-time updates and user interaction
 - Audio Manager syncs with Central Server for state-appropriate audio cues
 
-## Project - Setup and Deployment
+# Project - Setup and Deployment
 1. Clone the repository
 2. Install dependencies: `pip install -r requirements.txt`
 3. Configure `config.py` for your environment
@@ -227,7 +227,7 @@ Our project leverages the I2C / STEMMA QT ecosystem for several key reasons:
 
 This ecosystem provides a robust, flexible foundation for our racetrack system, supporting both current functionality and future expansions while facilitating hands-on STEM learning.
 
-## Network Setup
+# Network Setup
 
 ### Direct Connection
 - The Raspberry Pi (Start Gate) and Lenovo ThinkCentre (Central Server/Finish Gate) are connected via a regular Ethernet cable for low-latency, direct communication.
@@ -240,7 +240,7 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 - **Subnet mask**: 255.255.255.0
 - **No default gateway needed** for this direct connection
 
-## Testing
+# Testing
 - Set `INITIAL_RACE_IN_PROGRESS = True` in `config.py` for isolated finish gate testing
 - Use `TEST_MODE = True` for full system testing without physical hardware
 - Run `sensor_calibration.py` to calibrate light sensors and adjust `LIGHT_SENSOR_THRESHOLD`
@@ -250,7 +250,7 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 - TEST_MODE for running the system without physical hardware
 - Sensor calibration tool doubles as a testing utility for finish detection
 
-## Configuration Management Web Interface
+# Configuration Management Web Interface
 - Dynamic Web Interface: A user-friendly web interface for viewing and modifying configuration settings in real-time, without the need to restart the application.
 - Database-Driven Configuration: All configuration values are stored in a SQLite database, allowing for persistent changes and easy retrieval across application restarts.
 - Dual-Source Configuration:
@@ -265,30 +265,32 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 	- Ensures backwards compatibility and easy integration of new features.
 - Real-Time Updates: Changes made through the web interface are immediately reflected in the running application, providing instant feedback and eliminating the need for manual restarts.
 
-## Error Handling and Logging
+# Error Handling and Logging
 - Comprehensive error handling across all components
 - Detailed logging for troubleshooting and system monitoring
 - Component status updates are regularly sent to the Central Server
 
-## Troubleshooting
+# Troubleshooting
 - Check console outputs for error messages and logs
 - Use the web interface to monitor system status and component health
 - For audio issues, verify system volume and presence of audio files
 - Run sensor calibration tool if finish detection becomes unreliable
 
-## Maintenance
+# Maintenance
 - Regularly check and clean light sensors for accurate detection
 - Ensure all cable connections are secure
 - Update firmware on microcontrollers as needed
 - Periodically test and calibrate the start gate mechanism
 - Run sensor calibration tool to maintain optimal `LIGHT_SENSOR_THRESHOLD`
 
-## Finish Gate Threshold Behavior:
+# Finish Gate Threshold Behavior:
 - If USE_ADAPTIVE_THRESHOLD is False: System uses the static LIGHT_SENSOR_THRESHOLD value.
 - If USE_ADAPTIVE_THRESHOLD is True and USE_DYNAMIC_THRESHOLD is False: #   System uses the percentage-based light reduction method (LIGHT_REDUCTION_PERCENTAGE).
 - If both USE_ADAPTIVE_THRESHOLD and USE_DYNAMIC_THRESHOLD are True: System uses a dynamic threshold calculation (mean - (sensitivity * standard deviation)).
 - BASELINE_SAMPLES determines how many recent light readings are used to calculate the baseline light level. Higher values make the system more stable but slower to adapt.
 - This sampling happens automatically and quickly before each race and between races.
+
+# Race Event Management and Timing System
 
 ## Race Timing System
 1. Race Initiation: Start Gate lifts the lever and signals the Central Server
@@ -351,17 +353,17 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 - In the UI, momentum is displayed as 'N/A' when weight is not entered, ensuring clarity for users (this display method may be subject to future updates).
 - This feature complements the existing Kinetic Energy measurement, providing users with additional physics-based insights into their vehicle's performance.
 
-## Database Management
+# Database Management
 - SQLite database for storing race results and component statuses
 - Automatic creation of necessary tables on first run
 - Queries for detecting new records and managing race history
 
-## Cross-Platform Compatibility
+# Cross-Platform Compatibility
 - Use of os.path.join for file path management
 - Pygame for cross-platform audio playback
 - Web interface for platform-independent race monitoring and control
 
-## Temperature and Humidity Monitoring:
+# Temperature and Humidity Monitoring:
    - Weather information section that fetches and displays this data on our dashboard via a periodic OpenWeatherMap API call.
    
 
@@ -441,7 +443,7 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 - **Description**: Handles a client disconnection.
 - **Function**: `handle_disconnect()`
 
-## Future Enhancements
+# Future Enhancements
 
 1. Improved Data Analytics: Enhance the existing analytics dashboard with historical trends, comparison tools, and visual data representations.
 
@@ -453,9 +455,9 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 
 5. Implementation of formulas for phase 2, 3 and 4: Requires an additional checkpoint gate (at the end of an incline) then we'll be able to measure Gravitational Acceleration and (linear) Acceleration. This would open the doors to be able to calculate outputs for force, potential energy, work done, power, g-force., friction force, air resistance ,net force, deceleration and more. 
 
-## Contributing
+# Contributing
 Please read CONTRIBUTING.md for details on our code of conduct and the process for submitting pull requests.
 
-## License
+# License
 This project is licensed under the MIT License - see the LICENSE.md file for details.
 
