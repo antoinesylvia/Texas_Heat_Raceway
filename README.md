@@ -173,16 +173,9 @@ This order ensures that the central server is ready to receive connections from 
 
 For subsequent runs, the reset button is used to return to the 'Initialization' state and begin this process again.
 
-
-
-
-
-
-  
-
 # Hardware 
 
-## Components
+## System Components
 
 ### Start Gate Setup (Setup 1 of 4)
 - Main Controller: Raspberry Pi 5
