@@ -209,7 +209,7 @@ For subsequent runs, the reset button is used to return to the 'Initialization' 
 ### Central Server (Setup 4 of 4)
 - Hardware: Lenovo ThinkCentre M920q Tiny (shared with Finish Gate setup)
 
-### Hardware Setup Instructions
+# Hardware Setup Instructions
 1. Connect all I2C devices to their respective multiplexers
 2. Ensure proper power supply to all components
 3. Connect Ethernet cables from Finish Gate and Start Gate setups to each other (if you don't want to use a router and not using a checkpoint gate). If using a start gate, checkpoint gate and finish gate, connect all 3 to a router via an ethernet cord.  
@@ -217,7 +217,7 @@ For subsequent runs, the reset button is used to return to the 'Initialization' 
 5. Mount the Waveshare display for clear visibility
 6. Install the start gate mechanism with the Lego Technic Motor
 
-### Why We Chose the I2C / STEMMA QT Ecosystem
+# Why We Chose the I2C / STEMMA QT Ecosystem
 Our project leverages the I2C / STEMMA QT ecosystem for several key reasons:
 
 - Modularity: Easily connect, disconnect, and swap components.
