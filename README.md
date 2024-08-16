@@ -18,8 +18,36 @@ The offshoot of putting this project together, is build an engaging system that 
 - Central Server coordinates all components and maintains race state
 - Finish Gate reports to and receives instructions from Central Server
 - Start Gate manages race initiation and reports to Central Server
+- Checkpoint Gate reports to Central Server
 - Web Interface provides real-time updates and user interaction
 - Audio Manager syncs with Central Server for state-appropriate audio cues
+
+## Project - Setup and Deployment
+1. Clone the repository
+2. Install dependencies: `pip install -r requirements.txt`
+3. Configure `config.py` for your environment
+4. Run the central server: `python app.py`
+5. Start the finish gate script: `python finish_gate.py`
+6. Start the start gate script: `python start_gate.py`
+7. Access the web interface at `http://localhost:5000` (or configured HOST:PORT)
+
+#### Order of Opening Programs
+1. Central Server
+2. Finish Gate
+3. Start Gate
+
+This order ensures that the central server is ready to receive connections from both gates.
+
+#### Initialization Process (1st run and subsequent runs)
+1. Central server starts and enters the 'Initialization' state.
+2. Finish gate connects and reports its component status.
+3. Start gate connects and reports its component status.
+4. Once both gates have reported OK status, the central server transitions to the 'Ready' state.
+5. The start gate then waits for user input (button press) to begin the race.
+
+For subsequent runs, the reset button is used to return to the 'Initialization' state and begin this process again.
+
+
 
 # Key Benefits
 
@@ -217,31 +245,6 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 - **Lenovo ThinkCentre**: 192.168.1.1 (example IP)
 - **Subnet mask**: 255.255.255.0
 - **No default gateway needed** for this direct connection
-
-## Project - Setup and Deployment
-1. Clone the repository
-2. Install dependencies: `pip install -r requirements.txt`
-3. Configure `config.py` for your environment
-4. Run the central server: `python app.py`
-5. Start the finish gate script: `python finish_gate.py`
-6. Start the start gate script: `python start_gate.py`
-7. Access the web interface at `http://localhost:5000` (or configured HOST:PORT)
-
-#### Order of Opening Programs
-1. Central Server
-2. Finish Gate
-3. Start Gate
-
-This order ensures that the central server is ready to receive connections from both gates.
-
-#### Initialization Process (1st run and subsequent runs)
-1. Central server starts and enters the 'Initialization' state.
-2. Finish gate connects and reports its component status.
-3. Start gate connects and reports its component status.
-4. Once both gates have reported OK status, the central server transitions to the 'Ready' state.
-5. The start gate then waits for user input (button press) to begin the race.
-
-For subsequent runs, the reset button is used to return to the 'Initialization' state and begin this process again.
 
 ## Testing
 - Set `INITIAL_RACE_IN_PROGRESS = True` in `config.py` for isolated finish gate testing
