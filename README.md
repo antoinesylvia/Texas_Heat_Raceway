@@ -1,6 +1,30 @@
 # Texas Heat Raceway - Automated Diecast Racetrack System
 
 # Index
+- [Project Overview](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#project-overview)
+- [Key Benefits](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#key-benefits)
+- [System Architecture](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#system-architecture)
+- [System Integration](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#system-integration)
+- [Project - Setup and Deployment](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#project---setup-and-deployment)
+- [Hardware](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#hardware)
+- [Hardware Setup Instructions](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#hardware-setup-instructions)
+- [Why We Chose the I2C / Stemma QT Ecosystem](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#why-we-chose-the-i2c--stemma-qt-ecosystem)
+- [Network Setup](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#network-setup)
+- [Configuration Management Web Interface](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#configuration-management-web-interface)
+- [Error Handling and Logging](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#error-handling-and-logging)
+- [Troubleshooting](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#troubleshooting)
+- [Maintenance](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#maintenance)
+- [Finish Gate Threshold Behavior](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#finish-gate-threshold-behavior)
+- [Race Event Management and Timing System](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#race-event-management-and-timing-system)
+- [Advanced Race Modes](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#advanced-race-modes)
+- [Database Management](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#database-management)
+- [Cross-Platform Compatibility](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#cross-platform-compatibility)
+- [Temperature and Humidity Monitoring](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#temperature-and-humidity-monitoring)
+- [API Endpoints (Central Server)](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#api-endpoints-central-server)
+- [WebSocket Events](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#websocket-events)
+- [Future Enhancements](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#future-enhancements)
+- [Contributing](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#contributing)
+- [License](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#license)
 
 
 # Project Overview
