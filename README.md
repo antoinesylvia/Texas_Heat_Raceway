@@ -181,6 +181,21 @@ The offshoot of putting this project together, is build an engaging system that 
 5. Mount the Waveshare display for clear visibility
 6. Install the start gate mechanism with the Lego Technic Motor
 
+## Why We Chose the I2C / STEMMA QT Ecosystem
+Our project leverages the I2C / STEMMA QT ecosystem for several key reasons:
+
+- Modularity: Easily connect, disconnect, and swap components.
+- Simplicity: Reduces wiring complexity and pin usage on main controllers.
+- Expandability: I2C multiplexers allow connection of numerous devices.
+- Consistency: Similar components across setups improve maintainability.
+- Educational Value: Exposes users to industry-standard technologies.
+- Plug-and-Play: STEMMA QT connectors enable quick, foolproof assembly.
+- Scalability: Easily add or remove components as the project evolves.
+- Reduced Errors: Standardized connections minimize wiring mistakes.
+- Community Support: Wide adoption means extensive documentation and community resources.
+
+This ecosystem provides a robust, flexible foundation for our racetrack system, supporting both current functionality and future expansions while facilitating hands-on STEM learning.
+
 ## Network Setup
 
 ### Direct Connection
