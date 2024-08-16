@@ -151,13 +151,24 @@ The development of this project has a key secondary benefit: creating an engagin
   	- Special events (new records, ties) have dedicated audio cues
   	- Welcome sound plays on Central Server startup
 
-### 6. Configuration (config.py)
+### 6. Configuration (config.py and config.html)
 - **Core Functionality**: Centralized system configuration
 - **Key Features**:
   	- Defines all system-wide constants and settings
-  	- Enables easy system behavior adjustments
-  	- Facilitates test mode and deployment configurations
-  	- Can be retrieved through an API endpoint once imported by the Central Server (on startup)
+  		- Enables easy system behavior adjustments
+  		- Facilitates test mode and deployment configurations
+  		- Can be retrieved through an API endpoint once imported by the Central Server (on startup)
+		- Dynamic Web Interface: A user-friendly web interface for viewing and modifying configuration settings in real-time, without the need to restart the application.
+		- Database-Driven Configuration: All configuration values are stored in a SQLite database, allowing for persistent changes and easy retrieval across application restarts.
+		- Dual-Source Configuration:
+			- config.py serves as the initial template and fallback for default values if a "reset" is called. 
+			- The database acts as the source of truth once the config.py file is imported, reflecting the most up-to-date configuration.
+		- Flexible Initialization Options:
+			- Automatic Database Initialization: On first run, the system automatically populates the database with default values from config.py, ensuring a smooth setup process.
+			- Command-Line Reset: Option to reset the database to default values from config.py using a command-line argument (e.g., python central_server.py -config).
+		- Adaptive Configuration Management:
+			- Automatic detection and addition of new configuration keys from config.py on each application boot, ensuring backwards compatibility and easy integration of new features.
+		- Real-Time Updates: Changes made through the web interface are immediately reflected in the running application, providing instant feedback and eliminating the need for manual restarts.
 
 ### 7. Sensor Calibration (sensor_calibration.py)
 - **Core Functionality**: Standalone tool for calibrating light sensors
@@ -281,21 +292,6 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 ## Testing Modes
 - TEST_MODE for running the system without physical hardware
 - Sensor calibration tool doubles as a testing utility for finish detection
-
-# Configuration Management Web Interface (config.html)
-- Dynamic Web Interface: A user-friendly web interface for viewing and modifying configuration settings in real-time, without the need to restart the application.
-- Database-Driven Configuration: All configuration values are stored in a SQLite database, allowing for persistent changes and easy retrieval across application restarts.
-- Dual-Source Configuration:
-	- config.py serves as the initial template and fallback for default values if a "reset" is called. 
-	- The database acts as the source of truth once the config.py file is imported, reflecting the most up-to-date configuration.
-- Flexible Initialization Options:
-	- Automatic Database Initialization: On first run, the system automatically populates the database with default values from config.py, ensuring a smooth setup process.
-	- Command-Line Reset: Option to reset the database to default values from config.py using a command-line argument (e.g., python central_server.py -config).
-- Automatic Database Initialization: On first run, the system automatically populates the database with default values from config.py, ensuring a smooth setup process.
-- Adaptive Configuration Management:
-	- Automatic detection and addition of new configuration keys from config.py on each application boot.
-	- Ensures backwards compatibility and easy integration of new features.
-- Real-Time Updates: Changes made through the web interface are immediately reflected in the running application, providing instant feedback and eliminating the need for manual restarts.
 
 # Error Handling and Logging
 - Comprehensive error handling across all components
