@@ -16,7 +16,9 @@ The offshoot of putting this project together, is build an engaging system that 
 - Web Interface provides real-time updates and user interaction
 - Audio Manager syncs with Central Server for state-appropriate audio cues
 
-## System Key Benefits
+# Benefits
+
+## System
 1. Modular design with clear separation of concerns
 2. Real-time updates and communication
 3. Scalable architecture for future enhancements
@@ -27,12 +29,12 @@ The offshoot of putting this project together, is build an engaging system that 
 8. Centralized timing to ensure consistent measurements across all lanes
 9. Minimal latency for near real-time timing accuracy
 
-## Network Benefits
+## Network
 - Minimized network latency for time-critical operations
 - Isolated network for enhanced security and reliability
 - Eliminates dependency on external network infrastructure
 
-## Configuration Benefits
+## Configuration 
 - Centralized parameter management
 - Reduced risk of cross-component inconsistencies
 - Easy race setup and behavior adjustments
