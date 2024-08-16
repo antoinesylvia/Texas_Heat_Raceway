@@ -323,7 +323,9 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 7. Intermission: Await reset to prepare for the next race.
 8. Reset: Reset the track, cars, and system for the next race.
 
-## Advanced Race Modes (Option 1: Face Off)
+# Advanced Race Modes 
+
+## Option 1: Face Off
 - Dynamic Race Management: Supports up 2, 4 or 6 racers with the ability to adjust the number of participants, manage 3 heats per round, and dynamically update scores.
 - Point-based Scoring System: Implements a scoring system where points are assigned based on finishing positions in each heat, with a total points calculation determining the overall ranking.
 - Real-time Leaderboard: Displays a live leaderboard that updates as race results are entered, showing current rankings based on total points.
@@ -332,7 +334,7 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 - Utility Features: Offers functionalities like dark mode toggle, data import/export, undo/redo actions, and various reset options for flexibility in tournament management.
 - Tie breaker: If multiple cars are tied in points after a 3 heat race, a 4th leg is added for sudden death. 
 
-## Advanced Race Modes (Option 2: Bracket Buster)
+## Option 2: Bracket Buster
 - Tournament Bracket Visualization: Automatically generates and updates a tournament bracket with round labels, supporting up to 8 racers.
 - Dynamic Scoring System: Tracks and displays scores for each heat, high scores, and total points, determining the match winners and overall champion.
 - Automatic Advancement: Automatically advances winning racers through the rounds, culminating in the final championship match.
