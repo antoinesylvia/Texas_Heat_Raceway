@@ -33,7 +33,7 @@ This project implements an automated 6 lane racetrack system for diecast vehicle
 - Finish gate with light sensors (powered by a Tiny Lenovo ThinkCentre, but can be swap out for a Pi)
 - Central server (serves as the brain of the operation, handles the coordination and race event state between the start gate and finish gate)
 - Audio manager (plays various sounds based on race state) 
-- Web control interface ran locally
+- Web control interface ran locally (main dash and configuration options)
 
 The development of this project has a key secondary benefit: creating an engaging system that can teach children about science. The following phases will be integrated into our main dashboard as they are completed:
 
