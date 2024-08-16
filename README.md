@@ -126,7 +126,7 @@ The development of this project has a key secondary benefit: creating an engagin
   	- Configurable motor positions and speed for consistent start gate operation
   	- Synchronized start to ensure all lanes start timing simultaneously
   
-### 4. Web Interface (index.html, script.js)
+### 4. Web Interface (main.html)
 - **Core Functionality**: User interface for race management and monitoring
 - **Key Features**:
   	- Real-time race status and results display
@@ -279,7 +279,7 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 - TEST_MODE for running the system without physical hardware
 - Sensor calibration tool doubles as a testing utility for finish detection
 
-# Configuration Management Web Interface
+# Configuration Management Web Interface (config.html)
 - Dynamic Web Interface: A user-friendly web interface for viewing and modifying configuration settings in real-time, without the need to restart the application.
 - Database-Driven Configuration: All configuration values are stored in a SQLite database, allowing for persistent changes and easy retrieval across application restarts.
 - Dual-Source Configuration:
@@ -350,7 +350,7 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 
 # Advanced Race Modes 
 
-## Option 1: Face Off
+## Option 1: Face Off (tourney_faceoff.html)
 - Dynamic Race Management: Supports up 2, 4 or 6 racers with the ability to adjust the number of participants, manage 3 heats per round, and dynamically update scores.
 - Point-based Scoring System: Implements a scoring system where points are assigned based on finishing positions in each heat, with a total points calculation determining the overall ranking.
 - Real-time Leaderboard: Displays a live leaderboard that updates as race results are entered, showing current rankings based on total points.
@@ -359,7 +359,7 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 - Utility Features: Offers functionalities like dark mode toggle, data import/export, undo/redo actions, and various reset options for flexibility in tournament management.
 - Tie breaker: If multiple cars are tied in points after a 3 heat race, a 4th leg is added for sudden death. 
 
-## Option 2: Bracket Buster
+## Option 2: Bracket Buster (tourney_bracketbuster.html)
 - Tournament Bracket Visualization: Automatically generates and updates a tournament bracket with round labels, supporting up to 8 racers.
 - Dynamic Scoring System: Tracks and displays scores for each heat, high scores, and total points, determining the match winners and overall champion.
 - Automatic Advancement: Automatically advances winning racers through the rounds, culminating in the final championship match.
