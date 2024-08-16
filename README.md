@@ -1,7 +1,7 @@
 # Texas Heat Raceway - Automated Diecast Racetrack System
 
 ##Index
-https://github.com/antoinesylvia/dallas_diecast_labs/blob/main/README.md#project-overview
+[Project Overview](https://github.com/antoinesylvia/dallas_diecast_labs/blob/main/README.md#project-overview)
 
 
 ## Project Overview
