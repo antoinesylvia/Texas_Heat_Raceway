@@ -220,14 +220,14 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 6. Start the start gate script: `python start_gate.py`
 7. Access the web interface at `http://localhost:5000` (or configured HOST:PORT)
 
-### Order of Opening Programs
+#### Order of Opening Programs
 1. Central Server
 2. Finish Gate
 3. Start Gate
 
 This order ensures that the central server is ready to receive connections from both gates.
 
-### Initialization Process (1st run and subsequent runs)
+#### Initialization Process (1st run and subsequent runs)
 1. Central server starts and enters the 'Initialization' state.
 2. Finish gate connects and reports its component status.
 3. Start gate connects and reports its component status.
