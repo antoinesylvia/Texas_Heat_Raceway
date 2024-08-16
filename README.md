@@ -14,41 +14,6 @@ The offshoot of putting this project together, is build an engaging system that 
 - Phase 3: Potential Energy, Work Done, ForcePower, Force and G-Force. [Planned]
 - Phase 4: Energy Efficiency, Coefficient of Restitution, Heat Generation, Impulse & Jerk, and Terminal Velocity. [Planned]
 
-## System Integration
-- Central Server coordinates all components and maintains race state
-- Finish Gate reports to and receives instructions from Central Server
-- Start Gate manages race initiation and reports to Central Server
-- Checkpoint Gate reports to Central Server
-- Web Interface provides real-time updates and user interaction
-- Audio Manager syncs with Central Server for state-appropriate audio cues
-
-## Project - Setup and Deployment
-1. Clone the repository
-2. Install dependencies: `pip install -r requirements.txt`
-3. Configure `config.py` for your environment
-4. Run the central server: `python app.py`
-5. Start the finish gate script: `python finish_gate.py`
-6. Start the start gate script: `python start_gate.py`
-7. Access the web interface at `http://localhost:5000` (or configured HOST:PORT)
-
-#### Order of Opening Programs
-1. Central Server
-2. Finish Gate
-3. Start Gate
-
-This order ensures that the central server is ready to receive connections from both gates.
-
-#### Initialization Process (1st run and subsequent runs)
-1. Central server starts and enters the 'Initialization' state.
-2. Finish gate connects and reports its component status.
-3. Start gate connects and reports its component status.
-4. Once both gates have reported OK status, the central server transitions to the 'Ready' state.
-5. The start gate then waits for user input (button press) to begin the race.
-
-For subsequent runs, the reset button is used to return to the 'Initialization' state and begin this process again.
-
-
-
 # Key Benefits
 
 ## System
@@ -123,61 +88,97 @@ For subsequent runs, the reset button is used to return to the 'Initialization' 
 ### 3. Start Gate (start_gate.py)
 - **Core Functionality**: Manages race start procedures and initial countdown
 - **Key Features**:
-  - Control of start gate mechanism using Lego Technic Motor via Raspberry Pi Build HAT
-  - LED countdown sequence provides visual cues synchronized with audio countdown
-  - Countdown sequence management with LED feedback
-  - Communication with central server for race initiation and synchronization
-  - User input handling for race start and reset via arcade buttons
-  - Component status reporting to central server
-  - Configurable motor positions and speed for consistent start gate operation
-  - Synchronized start to ensure all lanes start timing simultaneously
+  	- Control of start gate mechanism using Lego Technic Motor via Raspberry Pi Build HAT
+  	- LED countdown sequence provides visual cues synchronized with audio countdown
+  	- Countdown sequence management with LED feedback
+  	- Communication with central server for race initiation and synchronization
+  	- User input handling for race start and reset via arcade buttons
+  	- Component status reporting to central server
+  	- Configurable motor positions and speed for consistent start gate operation
+  	- Synchronized start to ensure all lanes start timing simultaneously
   
 ### 4. Web Interface (index.html, script.js)
 - **Core Functionality**: User interface for race management and monitoring
 - **Key Features**:
-  - Real-time race status and results display
-  - Component health monitoring
-  - Interactive car name management for personalized racing experience (`NUM_LANES`)
-  - Real-time updates using Socket.IO for instant display of race status and results. Socket.IO connection to central server (`CENTRAL_SERVER_URL`)
-  - Initialization with `DEFAULT_CAR_NAMES`
-  - Visual indication of winners and ties in race results and leaderboard
-  - Dynamic highlighting of winning lanes and ties
-  - Advanced tournament mode (Face Off and Bracket Buster, details below)
+  	- Real-time race status and results display
+  	- Component health monitoring
+  	- Interactive car name management for personalized racing experience (`NUM_LANES`)
+  	- Real-time updates using Socket.IO for instant display of race status and results. Socket.IO connection to central server (`CENTRAL_SERVER_URL`)
+  	- Initialization with `DEFAULT_CAR_NAMES`
+  	- Visual indication of winners and ties in race results and leaderboard
+  	- Dynamic highlighting of winning lanes and ties
+  	- Advanced tournament mode (Face Off and Bracket Buster, details below)
   
 ### 5. Audio Manager (audio_manager.py)
 - **Core Functionality**: Manages race-state specific audio playback
 - **Key Features**:
-  - State-based audio selection from `VALID_RACE_STATUSES`
-  - Threaded audio playback
-  - Race state transition audio cues
-  - Handles special event sounds (new record, tie)
-  - Cross-platform compatibility for audio file paths
-  - Uses pygame for cross-platform audio playback
-  - Audio files are organized in state-specific folders for easy management
-  - Special events (new records, ties) have dedicated audio cues
-  - Welcome sound plays on Central Server startup
+  	- State-based audio selection from `VALID_RACE_STATUSES`
+  	- Threaded audio playback
+  	- Race state transition audio cues
+  	- Handles special event sounds (new record, tie)
+  	- Cross-platform compatibility for audio file paths
+  	- Uses pygame for cross-platform audio playback
+  	- Audio files are organized in state-specific folders for easy management
+  	- Special events (new records, ties) have dedicated audio cues
+  	- Welcome sound plays on Central Server startup
 
 ### 6. Configuration (config.py)
 - **Core Functionality**: Centralized system configuration
 - **Key Features**:
-  - Defines all system-wide constants and settings
-  - Enables easy system behavior adjustments
-  - Facilitates test mode and deployment configurations
-  - Can be retrieved through an API endpoint once imported by the Central Server (on startup)
+  	- Defines all system-wide constants and settings
+  	- Enables easy system behavior adjustments
+  	- Facilitates test mode and deployment configurations
+  	- Can be retrieved through an API endpoint once imported by the Central Server (on startup)
 
 ### 7. Sensor Calibration (sensor_calibration.py)
 - **Core Functionality**: Standalone tool for calibrating light sensors
 - **Key Features**:
-  - Real-time display of light levels for all 6 sensors
-  - Simulates race finish detection
-  - Allows dynamic adjustment of `LIGHT_SENSOR_THRESHOLD`
-  - Helps fine-tune sensor sensitivity for accurate finish detection
+  	- Real-time display of light levels for all 6 sensors
+  	- Simulates race finishes to test calibration accuracy
+  	- Allows dynamic adjustment of `LIGHT_SENSOR_THRESHOLD`
+  	- Provides feedback on percent light coverage on car roll over. 
+  	- Helps fine-tune sensor sensitivity for accurate finish detection
+  	- Interactive threshold adjustment for optimal finish detection
+
+## System Integration
+- Central Server coordinates all components and maintains race state
+- Finish Gate reports to and receives instructions from Central Server
+- Start Gate manages race initiation and reports to Central Server
+- Checkpoint Gate reports to Central Server
+- Web Interface provides real-time updates and user interaction
+- Audio Manager syncs with Central Server for state-appropriate audio cues
+
+## Project - Setup and Deployment
+1. Clone the repository
+2. Install dependencies: `pip install -r requirements.txt`
+3. Configure `config.py` for your environment
+4. Run the central server: `python app.py`
+5. Start the finish gate script: `python finish_gate.py`
+6. Start the start gate script: `python start_gate.py`
+7. Access the web interface at `http://localhost:5000` (or configured HOST:PORT)
+
+#### Order of Opening Programs
+1. Central Server
+2. Finish Gate
+3. Start Gate
+
+This order ensures that the central server is ready to receive connections from both gates.
+
+#### Initialization Process (1st run and subsequent runs)
+1. Central server starts and enters the 'Initialization' state.
+2. Finish gate connects and reports its component status.
+3. Start gate connects and reports its component status.
+4. Once both gates have reported OK status, the central server transitions to the 'Ready' state.
+5. The start gate then waits for user input (button press) to begin the race.
+
+For subsequent runs, the reset button is used to return to the 'Initialization' state and begin this process again.
+
+
+
+
+
+
   
-## Sensor Calibration
-- Standalone calibration tool (`sensor_calibration.py`) for fine-tuning light sensors
-- Real-time display of light levels for all 6 lanes
-- Interactive threshold adjustment for optimal finish detection
-- Simulates race finishes to test calibration accuracy
 
 # Hardware 
 
