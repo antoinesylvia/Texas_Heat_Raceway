@@ -434,7 +434,7 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 - **Description**: Resets all configuration values to defaults from config.py.
 - **Function**: reset_config()
 
-## WebSocket Events
+# WebSocket Events
 
 #### `button_press` (SocketIO event)
 - **Description**: Handles button press actions to trigger user actions.
