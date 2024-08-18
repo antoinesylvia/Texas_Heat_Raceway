@@ -173,16 +173,6 @@ The development of this project has a key secondary benefit: creating an engagin
 			- Automatic detection and addition of new configuration keys from config.py on each application boot, ensuring backwards compatibility and easy integration of new features.
 		- Real-Time Updates: Changes made through the web interface are immediately reflected in the running application, providing instant feedback and eliminating the need for manual restarts.
 
-### 7. Sensor Calibration (sensor_calibration.py)
-- **Core Functionality**: Standalone tool for calibrating light sensors
-- **Key Features**:
-  	- Real-time display of light levels for all 6 sensors
-  	- Simulates race finishes to test calibration accuracy
-  	- Allows dynamic adjustment of `LIGHT_SENSOR_THRESHOLD`
-  	- Provides feedback on percent light coverage on car roll over. 
-  	- Helps fine-tune sensor sensitivity for accurate finish detection
-  	- Interactive threshold adjustment for optimal finish detection
-
 # System Integration
 - Central Server coordinates all components and maintains race state
 - Finish Gate reports to and receives instructions from Central Server
@@ -289,12 +279,15 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 # Testing
 - Set `INITIAL_RACE_IN_PROGRESS = True` in `config.py` for isolated finish gate testing
 - Use `TEST_MODE = True` for full system testing without physical hardware
-- Run `sensor_calibration.py` to calibrate light sensors and adjust `LIGHT_SENSOR_THRESHOLD`
 - Implement specific test modes for Start Gate mechanism and countdown sequence
-
-## Testing Modes
-- TEST_MODE for running the system without physical hardware
-- Sensor calibration tool doubles as a testing utility for finish detection
+- `sensor_calibration.py` calibration tool doubles as a testing utility for finish detection
+	- Real-time display of light levels for all 6 sensors
+  	- Simulates race finishes to test calibration accuracy
+  	- Allows dynamic adjustment of `LIGHT_SENSOR_THRESHOLD`
+  	- Percentage-based light reduction measure (LIGHT_REDUCTION_PERCENTAGE)
+  	- Provides feedback on percent light coverage on car roll over. 
+  	- Helps fine-tune sensor sensitivity for accurate finish detection
+  	- Interactive threshold adjustment for optimal finish detection 	
 
 # Error Handling and Logging
 - Comprehensive error handling across all components
@@ -312,7 +305,7 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 - Ensure all cable connections are secure
 - Update firmware on microcontrollers as needed
 - Periodically test and calibrate the start gate mechanism
-- Run sensor calibration tool to maintain optimal `LIGHT_SENSOR_THRESHOLD`
+- Run sensor calibration tool to maintain optimal `LIGHT_SENSOR_THRESHOLD`/ `LIGHT_REDUCTION_PERCENTAGE`
 
 # Finish Gate Threshold Behavior:
 - If USE_ADAPTIVE_THRESHOLD is False: System uses the static LIGHT_SENSOR_THRESHOLD value.
