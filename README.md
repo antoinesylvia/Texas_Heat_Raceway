@@ -27,6 +27,8 @@
 
 
 # Project Overview
+
+![Texas Heat Raceway Setup](https://github.com/antoinesylvia/Texas_Heat_Raceway/raw/f776e179d2016afa6b6089f81d7a35401d6e4603/zPics/20240816_225454.jpg)
 This project implements an automated 6 lane racetrack system for diecast vehicles 1/64 scale, featuring real-time race management, result tracking, audio-visual feedback and more. The track operates outdoors under a covered roof in Dallas, Texas. The system is comprised of:
 - Automated start gate (using Lego motors which uses a Raspberry Pi Build HAT)
 - Checkpoint gate (bottom of the initial launch incline, powered via a Raspberry Pi)
