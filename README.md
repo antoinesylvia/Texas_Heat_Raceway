@@ -2,10 +2,10 @@
 
 # Index
 - [Project Overview](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#project-overview)
+- [Project - Setup and Deployment](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#project---setup-and-deployment)
 - [Key Benefits](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#key-benefits)
 - [System Integration and Architecture](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#system-integration-and-architecture)
 - [Software](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#software)
-- [Project - Setup and Deployment](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#project---setup-and-deployment)
 - [Hardware](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#hardware)
 - [Hardware Setup Instructions](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#hardware-setup-instructions)
 - [Why We Chose the I2C / Stemma QT Ecosystem](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#why-we-chose-the-i2c--stemma-qt-ecosystem)
@@ -55,6 +55,24 @@ Cross-Platform Compatibility:
 
 Temperature and Humidity Monitoring:
    - Weather information section that fetches and displays this data on our dashboard via a periodic OpenWeatherMap API call.
+
+# Project - Setup and Deployment
+1. Clone the repository
+2. Install dependencies: `pip install -r requirements.txt`
+3. Configure `config.py` for your environment
+4. Run the central server: `python app.py`
+5. Start the finish gate script: `python finish_gate.py`
+6. Start the start gate script: `python start_gate.py`
+7. Access the web interface at `http://localhost:5000` (or configured HOST:PORT)
+
+-----------------------------
+#### Order of Opening Programs
+1. Central Server
+2. Finish Gate
+3. Start Gate
+4. Checkpoint Gate
+
+This order ensures that the central server is ready to receive connections from both gates.
 
 # Key Benefits
 ![Texas Heat Raceway Setup](https://github.com/antoinesylvia/Texas_Heat_Raceway/raw/f776e179d2016afa6b6089f81d7a35401d6e4603/zPics/20240816_225454.jpg)
@@ -238,24 +256,6 @@ Temperature and Humidity Monitoring:
 		- Adaptive Configuration Management:
 			- Automatic detection and addition of new configuration keys from config.py on each application boot, ensuring backwards compatibility and easy integration of new features.
 		- Real-Time Updates: Changes made through the web interface are immediately reflected in the running application, providing instant feedback and eliminating the need for manual restarts.
-
-# Project - Setup and Deployment
-1. Clone the repository
-2. Install dependencies: `pip install -r requirements.txt`
-3. Configure `config.py` for your environment
-4. Run the central server: `python app.py`
-5. Start the finish gate script: `python finish_gate.py`
-6. Start the start gate script: `python start_gate.py`
-7. Access the web interface at `http://localhost:5000` (or configured HOST:PORT)
-
------------------------------
-#### Order of Opening Programs
-1. Central Server
-2. Finish Gate
-3. Start Gate
-4. Checkpoint Gate
-
-This order ensures that the central server is ready to receive connections from both gates.
 
 -----------------------------
 
