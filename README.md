@@ -239,6 +239,7 @@ The development of this project has a key secondary benefit: creating an engagin
 1. Central Server
 2. Finish Gate
 3. Start Gate
+4. Checkpoint Gate
 
 This order ensures that the central server is ready to receive connections from both gates.
 
