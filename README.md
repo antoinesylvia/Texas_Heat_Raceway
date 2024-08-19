@@ -185,7 +185,7 @@ Temperature and Humidity Monitoring:
 
 - **tourney_bracketbuster.html**:
   	- Dynamic tournament bracket generation based on `racerCount` (2, 4, or 8 racers)
-  	- Real-time score tracking and winner determination (`handleResultChange`, `getWinner` functions)
+  	- Real-time score tracking, leaderboard and winner determination (`handleResultChange`, `getWinner` functions)
   	- Automatic advancement of winners to next rounds (`advanceWinner`, `advanceToNextRound` functions)
   	- Interactive racer naming system with real-time updates (`handleCarNameChange`, `RacerList` component)
   	- Responsive design with dark/light mode toggle (`isDarkMode` state, `toggleTheme` function)
