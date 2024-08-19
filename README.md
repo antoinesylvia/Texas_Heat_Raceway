@@ -2,7 +2,7 @@
 
 # Index
 - [Project Overview](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#project-overview)
-- [Project - Setup Instructions](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#project---setup-instructions)
+- [Project Setup Instructions](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#project---setup-instructions)
 - [Key Benefits](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#key-benefits)
 - [System Integration and Architecture](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#system-integration-and-architecture)
 - [Software](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#software)
@@ -56,7 +56,7 @@ Cross-Platform Compatibility:
 Temperature and Humidity Monitoring:
    - Weather information section that fetches and displays this data on our dashboard via a periodic OpenWeatherMap API call.
 
-# Project - Setup Instructions
+# Project Setup Instructions
 1. Clone the repository
 2. Install dependencies: `pip install -r requirements.txt`
 3. Configure `config.py` for your environment
