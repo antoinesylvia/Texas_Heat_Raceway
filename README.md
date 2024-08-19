@@ -171,15 +171,15 @@ Temperature and Humidity Monitoring:
     
  
 - **config.html**:
-  	- Dynamic configuration management with real-time updates (`handleConfigChange` function)
-  	- Comprehensive settings for Finish Gate, including `TRACK_LENGTH_INCHES` and `TIMEOUT_DURATION`
- 	- Adaptive threshold configuration for light sensors (`USE_ADAPTIVE_THRESHOLD`, `USE_DYNAMIC_THRESHOLD`)
- 	- Waveshare screen settings management (`SCREEN_WIDTH`, `SCREEN_HEIGHT`, `FULLSCREEN`)
-	- Central server configuration options (`DB_NAME`, `NUM_LANES`, `MAX_RETRIES`, `RETRY_DELAY`)
-	- Weather API integration settings (`WEATHER_API_KEY`, `WEATHER_CITY_ID`)
-  	- Responsive dark/light mode toggle (`isDarkMode` state)
-  	- Configuration reset functionality with confirmation (`resetConfig` function)
-  	- Persistent configuration storage with database integration (`saveConfig` function)
+  	- Dynamic configuration management with real-time updates: Allows instant modification of system settings without page reload (`handleConfigChange` function)
+  	- Comprehensive settings for Finish Gate: Manages crucial race parameters including track length and timeout duration (`TRACK_LENGTH_INCHES` and `TIMEOUT_DURATION`).
+ 	- Adaptive threshold configuration for light sensors: Provides flexible light detection options for varying race conditions (`USE_ADAPTIVE_THRESHOLD`, `USE_DYNAMIC_THRESHOLD`).
+ 	- Waveshare screen settings management: Controls display parameters for the race visualization screen (`SCREEN_WIDTH`, `SCREEN_HEIGHT`, `FULLSCREEN`).
+	- Central server configuration options: Configures core server settings including database, lanes, and retry mechanisms (`DB_NAME`, `NUM_LANES`, `MAX_RETRIES`, `RETRY_DELAY`).
+	- Weather API integration settings: Enables real-time weather data fetching for race conditions (`WEATHER_API_KEY`, `WEATHER_CITY_ID`).
+  	- Responsive dark/light mode toggle: Offers user-preferred viewing experience with theme switching (`isDarkMode` state).
+  	- Configuration reset functionality with confirmation: Allows reverting to default settings with user verification (`resetConfig` function).
+  	- Persistent configuration storage with database integration: Ensures settings are saved and retrievable across sessions (`saveConfig` function).
       
 
 - **tourney_bracketbuster.html**:
