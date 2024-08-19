@@ -324,7 +324,9 @@ Our project leverages the I2C / STEMMA QT ecosystem for several key reasons:
 
 This ecosystem provides a robust, flexible foundation for our racetrack system, supporting both current functionality and future expansions while facilitating hands-on STEM learning.
 
-# Network Setup
+# Network
+
+## Network Setup Instructions
 
 ### Direct Connection
 - The Raspberry Pi (Start Gate) and Lenovo ThinkCentre (Central Server/Finish Gate) are connected via a regular Ethernet cable for low-latency, direct communication.
