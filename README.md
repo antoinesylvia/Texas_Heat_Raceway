@@ -15,7 +15,6 @@
 - [Troubleshooting](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#troubleshooting)
 - [Maintenance](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#maintenance)
 - [Race Event Management and Timing System](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#race-event-management-and-timing-system)
-- [Advanced Race Modes](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#advanced-race-modes)
 - [API Endpoints (Central Server)](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#api-endpoints-central-server)
 - [WebSocket Events](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#websocket-events)
 - [Future Enhancements](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#future-enhancements)
@@ -397,26 +396,6 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 6. Finished: The race has concluded.
 7. Intermission: Await reset to prepare for the next race.
 8. Reset: Reset the track, cars, and system for the next race.
-
-# Advanced Race Modes 
-
-## Option 1: Face Off (tourney_faceoff.html)
-- Dynamic Race Management: Supports up 2, 4 or 6 racers with the ability to adjust the number of participants, manage 3 heats per round, and dynamically update scores.
-- Point-based Scoring System: Implements a scoring system where points are assigned based on finishing positions in each heat, with a total points calculation determining the overall ranking.
-- Real-time Leaderboard: Displays a live leaderboard that updates as race results are entered, showing current rankings based on total points.
-- Heat-wise Statistics: Provides a summary of each heat's winner and their points, offering a quick overview of individual heat performances.
-- Data Visualization: Includes a line chart that visually represents each racer's point progression across the three heats.
-- Utility Features: Offers functionalities like dark mode toggle, data import/export, undo/redo actions, and various reset options for flexibility in tournament management.
-- Tie breaker: If multiple cars are tied in points after a 3 heat race, a 4th leg is added for sudden death. 
-
-## Option 2: Bracket Buster (tourney_bracketbuster.html)
-- Tournament Bracket Visualization: Automatically generates and updates a tournament bracket with round labels, supporting up to 8 racers.
-- Dynamic Scoring System: Tracks and displays scores for each heat, high scores, and total points, determining the match winners and overall champion.
-- Automatic Advancement: Automatically advances winning racers through the rounds, culminating in the final championship match.
-- Real-time Winner Display: Highlights the winner of the tournament in a dedicated section as the rounds progress.
-- Responsive Design: Adapts to different screen sizes, ensuring a consistent experience across devices.
-- User-friendly Setup: Allows easy configuration of racers and tournament settings with an intuitive interface.
-- Persistent State Management: Utilizes React's state to maintain tournament progress, racer details, and theme preferences.
 
 ## API Endpoints (Central Server)
 
