@@ -9,6 +9,7 @@
 - [Hardware](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#hardware)
 - [Hardware Setup Instructions](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#hardware-setup-instructions)
 - [Why We Chose the I2C / Stemma QT Ecosystem](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#why-we-chose-the-i2c--stemma-qt-ecosystem)
+- [Network](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#network-1)
 - [Network Setup Instructions](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#network-setup-instructions)
 - [Error Handling and Logging](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#error-handling-and-logging)
 - [Troubleshooting](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#troubleshooting)
