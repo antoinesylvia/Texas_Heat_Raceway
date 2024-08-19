@@ -195,16 +195,16 @@ Temperature and Humidity Monitoring:
         
 
 - **tourney_faceoff.html**:
-  	- Dynamic scoring system with real-time updates (`handleResultChange` function)
- 	- Automatic tiebreaker detection and additional heat generation (`checkForTiebreaker` function)
- 	- Flexible racer count management (2-6 racers) with `handleRacerCountChange` function
- 	- Live leaderboard with ordinal ranking (`getLeaderboard` and `getOrdinalRank` functions)
- 	- Interactive data visualization using Chart.js (`updateChart` function)
- 	- Comprehensive statistics including highest score, average score, and total points (`getHighestScore`, `getAveragePoints`, `getTotalPoints` functions)
- 	- Undo/Redo functionality for all actions (`undo`, `redo` functions with `history` state)
- 	- Data persistence with local storage and import/export capabilities (`exportData`, `importData` functions)
- 	- Responsive design with dark/light mode toggle (`isDarkMode` state, `toggleDarkMode` function)
-  
+  	- Dynamic scoring system with real-time updates: Manages 3 heats per round for 2-6 racers, instantly calculating rankings based on finishing positions (`handleResultChange` function).
+  	- Automatic tiebreaker detection and additional heat generation: Identifies point ties after 3 heats and initiates a 4th sudden death heat (`checkForTiebreaker` function).
+  	- Flexible racer count management: Allows adjustment between 2, 4, or 6 participants with dynamic UI updates (`handleRacerCountChange` function).
+  	- Live leaderboard with ordinal ranking: Displays real-time standings with 1st, 2nd, 3rd place designations (`getLeaderboard` and `getOrdinalRank` functions).
+  	- Interactive data visualization using Chart.js: Presents a line chart showing each racer's point progression across heats (`updateChart` function).
+  	- Comprehensive statistics including highest score, average score, and total points: Offers detailed performance metrics for each racer (`getHighestScore`, `getAveragePoints`, `getTotalPoints` functions).
+  	- Undo/Redo functionality for all actions: Provides tournament management flexibility with action reversal and restoration (`undo`, `redo` functions with `history` state).
+  	- Data persistence with local storage and import/export capabilities: Ensures tournament data can be saved, loaded, and transferred between sessions (`exportData`, `importData` functions).
+  	- Responsive design with dark/light mode toggle: Adapts to various screen sizes and offers user-preferred viewing modes (`isDarkMode` state, `toggleDarkMode` function).
+
   -----------------------
 
 ### 5. Audio Manager (audio_manager.py)
