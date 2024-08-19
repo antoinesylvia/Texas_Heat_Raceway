@@ -2,7 +2,7 @@
 
 # Index
 - [Project Overview](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#project-overview)
-- [Project - Setup Instructions](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#project---setup-and-deployment)
+- [Project - Setup Instructions](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#project---setup-instructions)
 - [Key Benefits](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#key-benefits)
 - [System Integration and Architecture](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#system-integration-and-architecture)
 - [Software](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#software)
