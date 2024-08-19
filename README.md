@@ -184,15 +184,15 @@ Temperature and Humidity Monitoring:
       
 
 - **tourney_bracketbuster.html**:
-  	- Dynamic tournament bracket generation based on `racerCount` (2, 4, or 8 racers)
-  	- Real-time score tracking, leaderboard and winner determination (`handleResultChange`, `getWinner` functions)
-  	- Automatic advancement of winners to next rounds (`advanceWinner`, `advanceToNextRound` functions)
-  	- Interactive racer naming system with real-time updates (`handleCarNameChange`, `RacerList` component)
-  	- Responsive design with dark/light mode toggle (`isDarkMode` state, `toggleTheme` function)
-  	- Detailed race statistics including highest score, average score, and total points (`getHighestScore`, `getAveragePoints`, `getTotalPoints` functions)
-  	- Visual highlighting of leading cars in race tables (`getLeadingCars` function)
-  	- Tournament bracket visualization with round progression (`TournamentBracket` component)
-  	- Confetti celebration effect for tournament champion (`ReactConfetti` component)
+	- Dynamic tournament bracket generation based on `racerCount`: Supports 2, 4, or 8 racers with automatic matchup creation and progression through rounds.
+	- Real-time score tracking and winner determination: Manages 3 heats per round with point-based scoring system (`handleResultChange`, `getWinner` functions).
+	- Automatic advancement of winners to next rounds: Updates bracket and progresses winning racers in real-time (advanceWinner, `advanceToNextRound` functions).
+	- Interactive racer naming system with real-time updates: Allows dynamic participant management throughout the tournament (`handleCarNameChange`, `RacerList` component).
+	- Responsive design with dark/light mode toggle: Ensures optimal viewing experience across devices (`isDarkMode` state, `toggleTheme` function).
+	- Detailed race statistics including highest score, average score, and total points: Provides comprehensive performance metrics for each racer (`getHighestScore`, `getAveragePoints`, `getTotalPoints` functions).
+	- Visual highlighting of leading cars in race tables: Offers clear visual cues for current standings (`getLeadingCars` function).
+	- Tournament bracket visualization with round progression: Displays real-time tournament status and matchups (`TournamentBracket` component).
+	- Confetti celebration effect for tournament champion: Enhances the winning moment with visual celebration (`ReactConfetti` component).
         
 
 - **tourney_faceoff.html**:
