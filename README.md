@@ -169,6 +169,8 @@ Temperature and Humidity Monitoring:
 ---------------------
 
 - **main.html**:
+![Texas Heat Raceway in Action](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/fe65548e1f11af1d2177a5cddb442514ac26d65c/zPics/main.png)
+  
   	- Real-time race status and results display (`race_state_update socket` event)
   	- Component health monitoring with visual indicators (`components` state)
 	- Interactive car name management for `NUM_LANES` with automatic server updates
