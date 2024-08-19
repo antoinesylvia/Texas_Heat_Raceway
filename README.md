@@ -222,7 +222,7 @@ Temperature and Humidity Monitoring:
   	- Special events (new records, ties) have dedicated audio cues
   	- Welcome sound plays on Central Server startup
 
-### 6. Configuration (config.py, config.html & SQLite database tied to Central Server)
+### 6. Configuration (config.py, leverage by config.html & SQLite database (Central Server))
 - **Core Functionality**: Centralized system configuration
 - **Key Features**:
   	- Defines all system-wide constants and settings
