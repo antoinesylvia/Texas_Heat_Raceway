@@ -134,43 +134,43 @@ The development of this project has a key secondary benefit: creating an engagin
 
 ---------------------
 
-- **main.html**:
-	- Real-time race status and results display (`race_state_update socket` event)
-	- Component health monitoring with visual indicators (`components` state)
-	- Interactive car name management for `NUM_LANES` with automatic server updates
-	- Live weather data display using `weatherApiKey` and `weatherCityId`
-	- Responsive dark/light mode toggle (`isDarkMode state`)
-	- Dynamic calculation of kinetic energy and momentum based on car weight and speed
-	- Real-time leaderboard updates with winner highlighting (`leaderboard` state)
-	- Comprehensive race information display (`raceInfo` state: `raceNumber`, `trackState`, `componentStatus`)
-	- Socket.IO connection to central server (`CENTRAL_SERVER_URL`) for instant updates
+**main.html**:
+- Real-time race status and results display (`race_state_update socket` event)
+- Component health monitoring with visual indicators (`components` state)
+- Interactive car name management for `NUM_LANES` with automatic server updates
+- Live weather data display using `weatherApiKey` and `weatherCityId`
+- Responsive dark/light mode toggle (`isDarkMode state`)
+- Dynamic calculation of kinetic energy and momentum based on car weight and speed
+- Real-time leaderboard updates with winner highlighting (`leaderboard` state)
+- Comprehensive race information display (`raceInfo` state: `raceNumber`, `trackState`, `componentStatus`)
+- Socket.IO connection to central server (`CENTRAL_SERVER_URL`) for instant updates
     
       ----------
-- **config.html**:
- 	- Dynamic configuration management with real-time updates (`handleConfigChange` function)
- 	- Comprehensive settings for Finish Gate, including `TRACK_LENGTH_INCHES` and `TIMEOUT_DURATION`
- 	- Adaptive threshold configuration for light sensors (`USE_ADAPTIVE_THRESHOLD`, `USE_DYNAMIC_THRESHOLD`)
- 	- Waveshare screen settings management (`SCREEN_WIDTH`, `SCREEN_HEIGHT`, `FULLSCREEN`)
- 	- Central server configuration options (`DB_NAME`, `NUM_LANES`, `MAX_RETRIES`, `RETRY_DELAY`)
- 	- Weather API integration settings (`WEATHER_API_KEY`, `WEATHER_CITY_ID`)
- 	- Responsive dark/light mode toggle (`isDarkMode` state)
- 	- Configuration reset functionality with confirmation (`resetConfig` function)
- 	- Persistent configuration storage with database integration (`saveConfig` function)
+**config.html**:
+ - Dynamic configuration management with real-time updates (`handleConfigChange` function)
+ - Comprehensive settings for Finish Gate, including `TRACK_LENGTH_INCHES` and `TIMEOUT_DURATION`
+ - Adaptive threshold configuration for light sensors (`USE_ADAPTIVE_THRESHOLD`, `USE_DYNAMIC_THRESHOLD`)
+ - Waveshare screen settings management (`SCREEN_WIDTH`, `SCREEN_HEIGHT`, `FULLSCREEN`)
+ - Central server configuration options (`DB_NAME`, `NUM_LANES`, `MAX_RETRIES`, `RETRY_DELAY`)
+ - Weather API integration settings (`WEATHER_API_KEY`, `WEATHER_CITY_ID`)
+ - Responsive dark/light mode toggle (`isDarkMode` state)
+ - Configuration reset functionality with confirmation (`resetConfig` function)
+ - Persistent configuration storage with database integration (`saveConfig` function)
       
       --------------
-- **tourney_bracketbuster.html**:
- 	- Dynamic tournament bracket generation based on `racerCount` (2, 4, or 8 racers)
- 	- Real-time score tracking and winner determination (`handleResultChange`, `getWinner` functions)
- 	- Automatic advancement of winners to next rounds (`advanceWinner`, `advanceToNextRound` functions)
- 	- Interactive racer naming system with real-time updates (`handleCarNameChange`, `RacerList` component)
- 	- Responsive design with dark/light mode toggle (`isDarkMode` state, `toggleTheme` function)
- 	- Detailed race statistics including highest score, average score, and total points (`getHighestScore`, `getAveragePoints`, `getTotalPoints` functions)
- 	- Visual highlighting of leading cars in race tables (`getLeadingCars` function)
- 	- Tournament bracket visualization with round progression (`TournamentBracket` component)
- 	- Confetti celebration effect for tournament champion (`ReactConfetti` component)
+**tourney_bracketbuster.html**:
+ - Dynamic tournament bracket generation based on `racerCount` (2, 4, or 8 racers)
+ - Real-time score tracking and winner determination (`handleResultChange`, `getWinner` functions)
+ - Automatic advancement of winners to next rounds (`advanceWinner`, `advanceToNextRound` functions)
+ - Interactive racer naming system with real-time updates (`handleCarNameChange`, `RacerList` component)
+ - Responsive design with dark/light mode toggle (`isDarkMode` state, `toggleTheme` function)
+ - Detailed race statistics including highest score, average score, and total points (`getHighestScore`, `getAveragePoints`, `getTotalPoints` functions)
+ - Visual highlighting of leading cars in race tables (`getLeadingCars` function)
+ - Tournament bracket visualization with round progression (`TournamentBracket` component)
+ - Confetti celebration effect for tournament champion (`ReactConfetti` component)
         
       -----------------
-- **tourney_faceoff.html**:
+**tourney_faceoff.html**:
  	- Dynamic scoring system with real-time updates (`handleResultChange` function)
  	- Automatic tiebreaker detection and additional heat generation (`checkForTiebreaker` function)
  	- Flexible racer count management (2-6 racers) with `handleRacerCountChange` function
