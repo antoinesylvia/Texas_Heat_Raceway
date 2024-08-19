@@ -71,6 +71,14 @@ The development of this project has a key secondary benefit: creating an engagin
 - Enabled test mode for component isolation
 - Simplified multi-environment deployment
 
+# System Integration
+- Central Server coordinates all components and maintains race state
+- Finish Gate reports to and receives instructions from Central Server
+- Start Gate manages race initiation and reports to Central Server
+- Checkpoint Gate reports to Central Server
+- Web Interface provides real-time updates and user interaction
+- Audio Manager syncs with Central Server for state-appropriate audio cues
+
 # System Architecture
 
 ### 1. Central Server (central_server.py)
@@ -196,7 +204,7 @@ The development of this project has a key secondary benefit: creating an engagin
   	- Special events (new records, ties) have dedicated audio cues
   	- Welcome sound plays on Central Server startup
 
-### 6. Configuration (config.py and config.html)
+### 6. Configuration (config.py, config.html & SQLite database tied to Central Server)
 - **Core Functionality**: Centralized system configuration
 - **Key Features**:
   	- Defines all system-wide constants and settings
@@ -214,14 +222,6 @@ The development of this project has a key secondary benefit: creating an engagin
 		- Adaptive Configuration Management:
 			- Automatic detection and addition of new configuration keys from config.py on each application boot, ensuring backwards compatibility and easy integration of new features.
 		- Real-Time Updates: Changes made through the web interface are immediately reflected in the running application, providing instant feedback and eliminating the need for manual restarts.
-
-# System Integration
-- Central Server coordinates all components and maintains race state
-- Finish Gate reports to and receives instructions from Central Server
-- Start Gate manages race initiation and reports to Central Server
-- Checkpoint Gate reports to Central Server
-- Web Interface provides real-time updates and user interaction
-- Audio Manager syncs with Central Server for state-appropriate audio cues
 
 # Project - Setup and Deployment
 1. Clone the repository
