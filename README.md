@@ -140,7 +140,7 @@ The development of this project has a key secondary benefit: creating an engagin
   	- Synchronized start to ensure all lanes start timing simultaneously
   
 ### 4. Web Interface (main.html | config.html | tourney_bracketbuster.html | tourney_faceoff.html )
-- **Core Functionality**: User interfaces for race management and monitoring. Below is a list of **key features**:
+- **Core Functionality**: User interfaces for advanced race management and monitoring. Below is a list of **key features**:
 
 ---------------------
 
