@@ -13,12 +13,8 @@
 - [Error Handling and Logging](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#error-handling-and-logging)
 - [Troubleshooting](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#troubleshooting)
 - [Maintenance](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#maintenance)
-- [Finish Gate Threshold Behavior](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#finish-gate-threshold-behavior)
 - [Race Event Management and Timing System](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#race-event-management-and-timing-system)
 - [Advanced Race Modes](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#advanced-race-modes)
-- [Database Management](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#database-management)
-- [Cross-Platform Compatibility](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#cross-platform-compatibility)
-- [Temperature and Humidity Monitoring](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#temperature-and-humidity-monitoring)
 - [API Endpoints (Central Server)](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#api-endpoints-central-server)
 - [WebSocket Events](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#websocket-events)
 - [Future Enhancements](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#future-enhancements)
@@ -45,6 +41,21 @@ The development of this project has a key secondary benefit: creating an engagin
 - Phase 2: Analysis of gravitational acceleration (incline drop) and linear acceleration (straightaway between checkpoint and finish gate). [Planned]
 - Phase 3: Exploration of potential energy, work done, power, force, and g-force. [Planned]
 - Phase 4: Investigation of energy efficiency, coefficient of restitution, heat generation, impulse and jerk, and terminal velocity. [Planned]
+---------
+Other Notables
+
+Database Management:
+- SQLite database for storing race results and component statuses
+- Automatic creation of necessary tables on first run
+- Queries for detecting new records and managing race history
+
+Cross-Platform Compatibility:
+- Use of os.path.join for file path management
+- Pygame for cross-platform audio playback
+- Web interface for platform-independent race monitoring and control
+
+Temperature and Humidity Monitoring:
+   - Weather information section that fetches and displays this data on our dashboard via a periodic OpenWeatherMap API call.
 
 # Key Benefits
 ![Texas Heat Raceway Setup](https://github.com/antoinesylvia/Texas_Heat_Raceway/raw/f776e179d2016afa6b6089f81d7a35401d6e4603/zPics/20240816_225454.jpg)
@@ -125,7 +136,12 @@ The development of this project has a key secondary benefit: creating an engagin
 	- Pygame-based graphical interface for result display
 	- Socket.IO integration for real-time communication with the central server
 	
-	Note: Please see section below "Finish Gate Threshold Behavior" for more setup instructions.
+		- Finish Gate Threshold Behavior:
+			- If USE_ADAPTIVE_THRESHOLD is False: System uses the static LIGHT_SENSOR_THRESHOLD value.
+			- If USE_ADAPTIVE_THRESHOLD is True and USE_DYNAMIC_THRESHOLD is False: #   System uses the percentage-based light reduction method (LIGHT_REDUCTION_PERCENTAGE).
+			- If both USE_ADAPTIVE_THRESHOLD and USE_DYNAMIC_THRESHOLD are True: System uses a dynamic threshold calculation (mean - (sensitivity * standard deviation)).
+			- BASELINE_SAMPLES determines how many recent light readings are used to calculate the baseline light level. Higher values make the system more stable but slower to adapt.
+			- This sampling happens automatically and quickly before each race and between races.
 
 ### 3. Start Gate (start_gate.py)
 - **Core Functionality**: Manages race start procedures and initial countdown
@@ -352,13 +368,6 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 - Periodically test and calibrate the start gate mechanism
 - Run sensor calibration tool to maintain optimal `LIGHT_SENSOR_THRESHOLD`/ `LIGHT_REDUCTION_PERCENTAGE`
 
-# Finish Gate Threshold Behavior:
-- If USE_ADAPTIVE_THRESHOLD is False: System uses the static LIGHT_SENSOR_THRESHOLD value.
-- If USE_ADAPTIVE_THRESHOLD is True and USE_DYNAMIC_THRESHOLD is False: #   System uses the percentage-based light reduction method (LIGHT_REDUCTION_PERCENTAGE).
-- If both USE_ADAPTIVE_THRESHOLD and USE_DYNAMIC_THRESHOLD are True: System uses a dynamic threshold calculation (mean - (sensitivity * standard deviation)).
-- BASELINE_SAMPLES determines how many recent light readings are used to calculate the baseline light level. Higher values make the system more stable but slower to adapt.
-- This sampling happens automatically and quickly before each race and between races.
-
 # Race Event Management and Timing System
 
 ## Race Timing System
@@ -421,20 +430,6 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 - The central server and database are designed to handle races with or without weight and momentum data, maintaining compatibility with races where this information is not provided.
 - In the UI, momentum is displayed as 'N/A' when weight is not entered, ensuring clarity for users (this display method may be subject to future updates).
 - This feature complements the existing Kinetic Energy measurement, providing users with additional physics-based insights into their vehicle's performance.
-
-# Database Management
-- SQLite database for storing race results and component statuses
-- Automatic creation of necessary tables on first run
-- Queries for detecting new records and managing race history
-
-# Cross-Platform Compatibility
-- Use of os.path.join for file path management
-- Pygame for cross-platform audio playback
-- Web interface for platform-independent race monitoring and control
-
-# Temperature and Humidity Monitoring:
-   - Weather information section that fetches and displays this data on our dashboard via a periodic OpenWeatherMap API call.
-   
 
 ## API Endpoints (Central Server)
 
