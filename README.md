@@ -419,20 +419,6 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 - User-friendly Setup: Allows easy configuration of racers and tournament settings with an intuitive interface.
 - Persistent State Management: Utilizes React's state to maintain tournament progress, racer details, and theme preferences.
 
-## Kinetic Energy Measurement [Optional]
-- A user has the option to enter the weight of their vehicle once the race concludes for results (lane, speed, time) via the web interface.
-- The kinetic energy calculates on the client side using a JavaScript function "if" weight is provided by a user, then it is immediately displayed and sent to the central server. 
-- The database can handle races with or without weight and kinetic energy data.
-- The UI currently displays 'N/A' for kinetic energy when weight is not provided (subject to change).
-
-## Momentum Measurement [Optional]
-- A user has the option to enter the weight of their vehicle once the race concludes for results (lane, speed, time) via the web interface.
-- Momentum is calculated on the client side using a JavaScript function. If weight is provided by a user, momentum is immediately calculated, displayed, and sent to the central server.
-- The calculation uses the formula: Momentum = mass * velocity, where mass is derived from the entered weight, and velocity is the recorded speed of the vehicle.
-- The central server and database are designed to handle races with or without weight and momentum data, maintaining compatibility with races where this information is not provided.
-- In the UI, momentum is displayed as 'N/A' when weight is not entered, ensuring clarity for users (this display method may be subject to future updates).
-- This feature complements the existing Kinetic Energy measurement, providing users with additional physics-based insights into their vehicle's performance.
-
 ## API Endpoints (Central Server)
 
 #### `/` (GET)
