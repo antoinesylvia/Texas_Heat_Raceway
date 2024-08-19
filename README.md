@@ -129,7 +129,7 @@ The development of this project has a key secondary benefit: creating an engagin
   	- Configurable motor positions and speed for consistent start gate operation
   	- Synchronized start to ensure all lanes start timing simultaneously
   
-### 4. Web Interface (main.html)
+### 4. Web Interface (main.html | config.html | tourney_bracketbuster.html | tourney_faceoff.html )
 - **Core Functionality**: User interface for race management and monitoring
 - **Key Features**:
   	- Real-time race status and results display
