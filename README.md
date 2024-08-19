@@ -260,6 +260,8 @@ Temperature and Humidity Monitoring:
 
 This order ensures that the central server is ready to receive connections from both gates.
 
+-------------------
+
 #### Initialization Process (1st run and subsequent runs)
 1. Central server starts and enters the 'Initialization' state.
 2. Finish gate connects and reports its component status.
