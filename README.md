@@ -71,7 +71,7 @@ The development of this project has a key secondary benefit: creating an engagin
 - Enabled test mode for component isolation
 - Simplified multi-environment deployment
 
-# System Integration
+# System Integration and Architecture
 - Central Server coordinates all components and maintains race state
 - Finish Gate reports to and receives instructions from Central Server
 - Start Gate manages race initiation and reports to Central Server
@@ -79,7 +79,9 @@ The development of this project has a key secondary benefit: creating an engagin
 - Web Interface provides real-time updates and user interaction
 - Audio Manager syncs with Central Server for state-appropriate audio cues
 
-# System Architecture
+# Software
+
+## System Components
 
 ### 1. Central Server (central_server.py)
 - **Core Functionality**: Main controller for the entire system (all of the codebase flows through this) 
