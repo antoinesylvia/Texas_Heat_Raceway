@@ -35,8 +35,7 @@ This project implements an automated 6 lane racetrack system for diecast vehicle
 - Audio manager (plays various sounds based on race state) 
 - Web control interface ran locally (main dash and configuration options)
 
-The development of this project has a key secondary benefit: creating an engaging system that can teach children about science. The following phases will be integrated into our main dashboard as they are completed, or more on this please visit our other readme file: [Formulas](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/FORMULAS_TEXAS_HEAT_RACEWAY.md):
-
+The development of this project has a key secondary benefit: creating an engaging system that can teach children about science. The following phases will be integrated into our main dashboard as they are completed, for more on this please visit our other readme file [Formulas](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/FORMULAS_TEXAS_HEAT_RACEWAY.md):
 - Phase 1: Measurement of time, speed, and distance. [Currently Testing]
 - Phase 2: Analysis of gravitational acceleration (incline drop) and linear acceleration (straightaway between checkpoint and finish gate). [Planned]
 - Phase 3: Exploration of potential energy, work done, power, force, and g-force. [Planned]
