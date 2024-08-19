@@ -19,7 +19,6 @@
 - [API Endpoints (Central Server)](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#api-endpoints-central-server)
 - [WebSocket Events](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#websocket-events)
 - [Future Enhancements](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#future-enhancements)
-- [Contributing](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#contributing)
 - [License](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/README.md#license)
 
 
@@ -521,9 +520,6 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 4. Drone Coverage: Cover the race with a mini drone.
 
 5. Implementation of formulas for phase 2, 3 and 4: Requires an additional checkpoint gate (at the end of an incline) then we'll be able to measure Gravitational Acceleration and (linear) Acceleration. This would open the doors to be able to calculate outputs for force, potential energy, work done, power, g-force., friction force, air resistance ,net force, deceleration and more. 
-
-# Contributing
-Please read CONTRIBUTING.md for details on our code of conduct and the process for submitting pull requests.
 
 # License
 This project is licensed under the MIT License - see the LICENSE.md file for details.
