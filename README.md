@@ -164,7 +164,7 @@ Temperature and Humidity Monitoring:
   	- Synchronized start to ensure all lanes start timing simultaneously
   
 ### 4. Web Interface (main.html | config.html | tourney_bracketbuster.html | tourney_faceoff.html )
-- **Core Functionality**: User interfaces for advanced race management and monitoring. Below is a list of **key features**:
+- **Core Functionality**: User interfaces for advanced race management and monitoring. Below is a list of **key features** and screenshot previews (dark mode available for all):
 
 ---------------------
 
@@ -183,6 +183,7 @@ Temperature and Humidity Monitoring:
     
  
 - **config.html**:
+![Texas Heat Raceway Setup](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/bd803615bcc687026d5830eb9bbb2e8be2500581/zPics/config.png)
   	- Dynamic configuration management with real-time updates: Allows instant modification of system settings without page reload (`handleConfigChange` function)
   	- Comprehensive settings for Finish Gate: Manages crucial race parameters including track length and timeout duration (`TRACK_LENGTH_INCHES` and `TIMEOUT_DURATION`).
  	- Adaptive threshold configuration for light sensors: Provides flexible light detection options for varying race conditions (`USE_ADAPTIVE_THRESHOLD`, `USE_DYNAMIC_THRESHOLD`).
@@ -195,6 +196,8 @@ Temperature and Humidity Monitoring:
       
 
 - **tourney_bracketbuster.html**:
+![Texas Heat Raceway Setup](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/bd803615bcc687026d5830eb9bbb2e8be2500581/zPics/tourney_bracket1.png)
+![Texas Heat Raceway Setup](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/bd803615bcc687026d5830eb9bbb2e8be2500581/zPics/tourney_bracket2.png)
 	- Dynamic tournament bracket generation based on `racerCount`: Supports 2, 4, or 8 racers with automatic matchup creation and progression through rounds.
 	- Real-time score tracking and winner determination: Manages 3 heats per round with point-based scoring system (`handleResultChange`, `getWinner` functions).
 	- Automatic advancement of winners to next rounds: Updates bracket and progresses winning racers in real-time (advanceWinner, `advanceToNextRound` functions).
@@ -207,6 +210,7 @@ Temperature and Humidity Monitoring:
         
 
 - **tourney_faceoff.html**:
+![Texas Heat Raceway Setup](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/bd803615bcc687026d5830eb9bbb2e8be2500581/zPics/tourney_faceoff.png)
   	- Dynamic scoring system with real-time updates: Manages 3 heats per round for 2-6 racers, instantly calculating rankings based on finishing positions (`handleResultChange` function).
   	- Automatic tiebreaker detection and additional heat generation: Identifies point ties after 3 heats and initiates a 4th sudden death heat (`checkForTiebreaker` function).
   	- Flexible racer count management: Allows adjustment between 2, 4, or 6 participants with dynamic UI updates (`handleRacerCountChange` function).
