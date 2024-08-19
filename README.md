@@ -41,6 +41,8 @@ The development of this project has a key secondary benefit: creating an engagin
 - Phase 2: Analysis of gravitational acceleration (incline drop) and linear acceleration (straightaway between checkpoint and finish gate). [Planned]
 - Phase 3: Exploration of potential energy, work done, power, force, and g-force. [Planned]
 - Phase 4: Investigation of energy efficiency, coefficient of restitution, heat generation, impulse and jerk, and terminal velocity. [Planned]
+
+- For more on this please visit our other readme file: [Formulas](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/FORMULAS_TEXAS_HEAT_RACEWAY.md)
 ---------
 Other Notables
 
