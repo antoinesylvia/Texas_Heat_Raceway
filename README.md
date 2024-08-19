@@ -135,7 +135,6 @@ Temperature and Humidity Monitoring:
 	- Integration with I2C multiplexer for multiple sensors and LEDs
 	- Pygame-based graphical interface for result display
 	- Socket.IO integration for real-time communication with the central server
-	
 		- Finish Gate Threshold Behavior:
 			- If USE_ADAPTIVE_THRESHOLD is False: System uses the static LIGHT_SENSOR_THRESHOLD value.
 			- If USE_ADAPTIVE_THRESHOLD is True and USE_DYNAMIC_THRESHOLD is False: #   System uses the percentage-based light reduction method (LIGHT_REDUCTION_PERCENTAGE).
