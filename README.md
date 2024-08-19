@@ -131,15 +131,42 @@ The development of this project has a key secondary benefit: creating an engagin
   
 ### 4. Web Interface (main.html | config.html | tourney_bracketbuster.html | tourney_faceoff.html )
 - **Core Functionality**: User interface for race management and monitoring
-- **Key Features**:
-  	- Real-time race status and results display
-  	- Component health monitoring
-  	- Interactive car name management for personalized racing experience (`NUM_LANES`)
-  	- Real-time updates using Socket.IO for instant display of race status and results. Socket.IO connection to central server (`CENTRAL_SERVER_URL`)
-  	- Initialization with `DEFAULT_CAR_NAMES`
-  	- Visual indication of winners and ties in race results and leaderboard
-  	- Dynamic highlighting of winning lanes and ties
-  	- Advanced tournament mode (Face Off and Bracket Buster, details below)
+	- **Main.html - Key Features**:
+  		- Real-time race status and results display
+  		- Component health monitoring
+  		- Interactive car name management for personalized racing experience (`NUM_LANES`)
+  		- Real-time updates using Socket.IO for instant display of race status and results. Socket.IO connection to central server (`CENTRAL_SERVER_URL`)
+  		- Initialization with `DEFAULT_CAR_NAMES`
+  		- Visual indication of winners and ties in race results and leaderboard
+  		- Dynamic highlighting of winning lanes and ties
+  		- Advanced tournament mode (Face Off and Bracket Buster, details below)
+    	- **Config.html - Key Features**:
+  		- Real-time race status and results display
+  		- Component health monitoring
+  		- Interactive car name management for personalized racing experience (`NUM_LANES`)
+  		- Real-time updates using Socket.IO for instant display of race status and results. Socket.IO connection to central server (`CENTRAL_SERVER_URL`)
+  		- Initialization with `DEFAULT_CAR_NAMES`
+  		- Visual indication of winners and ties in race results and leaderboard
+  		- Dynamic highlighting of winning lanes and ties
+  		- Advanced tournament mode (Face Off and Bracket Buster, details below)
+      	- **tourney_bracketbuster.html - Key Features**:
+  		- Real-time race status and results display
+  		- Component health monitoring
+  		- Interactive car name management for personalized racing experience (`NUM_LANES`)
+  		- Real-time updates using Socket.IO for instant display of race status and results. Socket.IO connection to central server (`CENTRAL_SERVER_URL`)
+  		- Initialization with `DEFAULT_CAR_NAMES`
+  		- Visual indication of winners and ties in race results and leaderboard
+  		- Dynamic highlighting of winning lanes and ties
+  		- Advanced tournament mode (Face Off and Bracket Buster, details below)
+      	- **tourney_faceoff.html - Key Features**:
+  		- Real-time race status and results display
+  		- Component health monitoring
+  		- Interactive car name management for personalized racing experience (`NUM_LANES`)
+  		- Real-time updates using Socket.IO for instant display of race status and results. Socket.IO connection to central server (`CENTRAL_SERVER_URL`)
+  		- Initialization with `DEFAULT_CAR_NAMES`
+  		- Visual indication of winners and ties in race results and leaderboard
+  		- Dynamic highlighting of winning lanes and ties
+  		- Advanced tournament mode (Face Off and Bracket Buster, details below)
   
 ### 5. Audio Manager (audio_manager.py)
 - **Core Functionality**: Manages race-state specific audio playback
