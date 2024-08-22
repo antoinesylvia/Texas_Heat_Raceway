@@ -232,7 +232,7 @@ Additional advanced calculations.
 
   - Time Spent on the Straightaway (from Part 1 and Part 2).
 
-# Vibration Dynamics
+## Vibration Dynamics
 
 - Analyze Stability and Vibrations: Explore how vibrations impact performance.
 
