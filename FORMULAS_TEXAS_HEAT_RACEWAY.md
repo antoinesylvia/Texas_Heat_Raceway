@@ -346,3 +346,30 @@ Final Calculations.
 
   - Friction Force (from Part 3: Frictional Force).
   - Normal Force (can be estimated from the weight of the car, g from Part 2: Gravitational Acceleration).
+ 
+## Energy Conversion Efficiency
+
+- Energy Conversion Efficiency: Measure the efficiency of energy conversion from potential energy at the top of the incline to kinetic energy at the finish line.
+
+- Why it applies: This calculation will help you understand how efficiently the car converts its potential energy at the top of the incline into kinetic energy as it moves down the straightaway to the finish line, identifying any energy losses.
+
+- Formula: Efficiency = (KE_finish / PE_start) * 100%
+
+- Required Data:
+
+- Kinetic Energy at the finish line (from Part 1).
+- Potential Energy at the start (from Part 3).
+
+## Impulse and Momentum Change
+
+- Impulse and Momentum Change: Calculate the change in momentum of the car as it moves from the incline onto the straightaway.
+
+- Why it applies: This calculation helps determine how quickly the car’s momentum changes, particularly how the car accelerates and decelerates on the straightaway after the incline.
+
+- Formula: J = Δp = F * Δt
+
+- Required Data:
+
+- Force applied during acceleration or deceleration (from Part 3).
+- Time interval (Δt) over which the force is applied (from Part 1).
+- Change in momentum (Δp) (from Part 1 and Part 2). Requires checkpoint gate data. 
