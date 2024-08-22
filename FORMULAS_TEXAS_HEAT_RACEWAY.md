@@ -319,19 +319,6 @@ Additional advanced calculations
   - Work output (from Part 3: Work Done).
   - Total Energy input (from Part 4: Energy Loss).
 
-## Coefficient of Friction
-
-- Coefficient of Friction: Determine the coefficient of friction between the car's wheels and the track.
-
-- Why it applies: The coefficient of friction is key to understanding the interaction between the car and the track surface, which directly impacts speed, stability, and energy loss.
-
-- Formula: μ = F_friction / N
-
-- Required Data:
-
-  - Friction Force (from Part 3: Frictional Force).
-  - Normal Force (can be estimated from the weight of the car, g from Part 2: Gravitational Acceleration).
-
 ## Energy Transfer Efficiency
 
 - Energy Transfer Efficiency: Measure the efficiency of energy transfer from potential energy at the top of the incline to kinetic energy at the finish line.
@@ -344,3 +331,16 @@ Additional advanced calculations
 
   - Potential Energy at the Top of Incline (from Part 3: Potential Energy).
   - Final Kinetic Energy at the finish line (from Part 4: Energy Loss).
+
+## Coefficient of Friction
+
+- Coefficient of Friction: Determine the coefficient of friction between the car's wheels and the track.
+
+- Why it applies: The coefficient of friction is key to understanding the interaction between the car and the track surface, which directly impacts speed, stability, and energy loss.
+
+- Formula: μ = F_friction / N
+
+- Required Data:
+
+  - Friction Force (from Part 3: Frictional Force).
+  - Normal Force (can be estimated from the weight of the car, g from Part 2: Gravitational Acceleration).
