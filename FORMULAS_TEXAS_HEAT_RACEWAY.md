@@ -168,7 +168,7 @@ These calculations require acceleration/gravitational acceleration data (from Pa
 
 # Part 4
 
-Additional advanced calculations
+Additional advanced calculations.
 
 ## Energy Efficiency
 
@@ -305,6 +305,8 @@ Additional advanced calculations
   - Friction Force (from Part 3).
  
   # Part 5
+
+Final Calculations.
 
 ## Mechanical Efficiency
 
