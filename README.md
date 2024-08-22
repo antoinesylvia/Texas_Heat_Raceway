@@ -62,7 +62,7 @@ Temperature and Humidity Monitoring:
 1. Clone the repository
 2. Install dependencies: `pip install -r requirements.txt`
 3. Configure `config.py` for your environment
-4. Run the central server: `python app.py`
+4. Run the central server: `python central_server.py`
 5. Start the finish gate script: `python finish_gate.py`
 6. Start the start gate script: `python start_gate.py`
 7. Access the web interface at `http://localhost:5000` (or configured HOST:PORT)
@@ -494,7 +494,9 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 
 4. Drone Coverage: Cover the race with a mini drone.
 
-5. Implementation of formulas for phase 2, 3 and 4: Requires an additional checkpoint gate (at the end of an incline) then we'll be able to measure Gravitational Acceleration and (linear) Acceleration. This would open the doors to be able to calculate outputs for force, potential energy, work done, power, g-force., friction force, air resistance ,net force, deceleration and more. 
+5. Implementation of formulas for phase 2, 3 and 4: Requires an additional checkpoint gate (at the end of an incline) then we'll be able to measure Gravitational Acceleration and (linear) Acceleration. This would open the doors to be able to calculate outputs for force, potential energy, work done, power, g-force., friction force, air resistance ,net force, deceleration and more.
+
+6. Docker
 
 # License
 This project is licensed under the MIT License - see the LICENSE.md file for details.
