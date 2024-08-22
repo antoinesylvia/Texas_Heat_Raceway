@@ -498,6 +498,8 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 
 6. Docker
 
+7. Race Slips
+
 # License
 This project is licensed under the MIT License - see the LICENSE.md file for details.
 
