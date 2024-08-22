@@ -58,7 +58,7 @@
 
 # Part 2
 
-These additional calculations require a checkpoint gate prior to the finish gate!
+These additional calculations require a checkpoint gate prior to the finish gate and data from part 1. 
 
 # Acceleration
 
