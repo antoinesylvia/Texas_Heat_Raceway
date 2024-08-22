@@ -303,3 +303,44 @@ Additional advanced calculations
   - Drag Force (from Part 3).
 
   - Friction Force (from Part 3).
+ 
+  # Part 5
+
+## Mechanical Efficiency
+
+- Mechanical Efficiency: Calculate the efficiency of the car in converting its input energy into useful work.
+
+- Why it applies: Understanding mechanical efficiency is crucial for optimizing the design of the car and track to minimize energy losses. It helps in identifying where improvements can be made to reduce friction and other resistive forces.
+
+- Formula: η = (Work output / Work input) * 100%
+
+- Required Data:
+
+  - Work output (from Part 3: Work Done).
+  - Total Energy input (from Part 4: Energy Loss).
+
+## Coefficient of Friction
+
+- Coefficient of Friction: Determine the coefficient of friction between the car's wheels and the track.
+
+- Why it applies: The coefficient of friction is key to understanding the interaction between the car and the track surface, which directly impacts speed, stability, and energy loss.
+
+- Formula: μ = F_friction / N
+
+- Required Data:
+
+  - Friction Force (from Part 3: Frictional Force).
+  - Normal Force (can be estimated from the weight of the car, g from Part 2: Gravitational Acceleration).
+
+## Energy Transfer Efficiency
+
+- Energy Transfer Efficiency: Measure the efficiency of energy transfer from potential energy at the top of the incline to kinetic energy at the finish line.
+
+- Why it applies: This calculation helps in understanding how efficiently the car converts its potential energy into motion, identifying energy losses that occur due to friction, air resistance, and other factors.
+
+- Formula: η_transfer = (KE_end / PE_top) * 100%
+
+- Required Data:
+
+  - Potential Energy at the Top of Incline (from Part 3: Potential Energy).
+  - Final Kinetic Energy at the finish line (from Part 4: Energy Loss).
