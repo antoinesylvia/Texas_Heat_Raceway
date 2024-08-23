@@ -487,17 +487,11 @@ This ecosystem provides a robust, flexible foundation for our racetrack system, 
 # Future Enhancements
 
 1. Improved Data Analytics: Enhance the existing analytics dashboard with historical trends, comparison tools, and visual data representations.
-
 2. Data model integration: Integrate Google's image recognition API for automatic car identification and naming. We would also fine tune a model and use our local compute resources.
-
 3. Text to Speech: TBD
-
 4. Drone Coverage: Cover the race with a mini drone.
-
 5. Implementation of formulas for phase 2, 3 and 4: Requires an additional checkpoint gate (at the end of an incline) then we'll be able to measure Gravitational Acceleration and (linear) Acceleration. This would open the doors to be able to calculate outputs for force, potential energy, work done, power, g-force., friction force, air resistance ,net force, deceleration and more.
-
 6. Docker
-
 7. Drag Race Slips
 
 # License
