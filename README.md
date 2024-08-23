@@ -27,13 +27,12 @@
 ![Texas Heat Raceway in Action](https://github.com/antoinesylvia/Texas_Heat_Raceway/raw/54fa975025f74245992fad0b8fe581977904259c/zPics/20240816_225830.jpg)
 
 This project implements an automated 6 lane racetrack system for diecast vehicles 1/64 scale, featuring real-time race management, result tracking, audio-visual feedback and more. The track operates outdoors under a covered roof in Dallas, Texas. The system is comprised of:
-- Automated start gate (using Lego motors which uses a Raspberry Pi Build HAT)
-- Checkpoint gate (bottom of the initial launch incline, powered via a Raspberry Pi)
-- Finish gate with light sensors (powered by a Tiny Lenovo ThinkCentre, but can be swapped out for a Pi)
-- Checkpoint gate (optional) with light sensors (powered by a Raspberry Pi)
-- Central server (serves as the brain of the operation, handles the coordination and race event state between the start gate and finish gate)
-- Audio manager (plays various sounds based on race state) 
-- Web control interface ran locally (main dash and configuration options)
+- Start Gate: Uses Lego motors via a Raspberry Pi Build HAT.
+- Checkpoint Gate: Bottom of the initial launch incline, wtih light sensors, powered via a Raspberry Pi.
+- Finish Gate: End of the track, with light sensors, powered by a Tiny Lenovo ThinkCentre, but can be swapped out for a Pi.
+- Central Server: Serves as the brain of the operation, handles the coordination and race event state between the start gate, checkpoint gate and finish gate.
+- Audio Manager: Plays various sounds based on race state. 
+- Web Control Interface: Ran locally, main dash, race events and configuration options.
 
 The development of this project has a key secondary benefit: creating an engaging system that can teach children about science. The following phases will be integrated into our main dashboard as they are completed, for more on this please visit our other readme file [Formulas](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/main/FORMULAS_TEXAS_HEAT_RACEWAY.md):
 - Phase 1: Measurement of time, speed, and distance. [Currently Testing]
