@@ -270,11 +270,12 @@ This order ensures that the central server is ready to receive connections from 
 -------------------
 
 #### Initialization Process (1st run and subsequent runs)
-1. Central server starts and enters the 'Initialization' state.
-2. Finish gate connects and reports its component status.
-3. Start gate connects and reports its component status.
-4. Once each gate has reported OK status, the central server transitions to the 'Ready' state.
-5. The start gate then waits for user input (button press) to begin the race.
+1. Central Server starts and enters the 'Initialization' state.
+2. Finish Gate connects and reports its component status.
+3. Start Gate connects and reports its component status.
+4. Checkpoint Gate connects and reports its component status. 
+5. Once each gate has reported OK status, the central server transitions to the 'Ready' state.
+6. The start gate then waits for user input (button press) to begin the race.
 
 For subsequent runs, the reset button is used to return to the 'Initialization' state and begin this process again.
 
