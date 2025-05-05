@@ -1,0 +1,1589 @@
+#!/usr/bin/env python3
+"""
+Raspberry Pi Build HAT Swing Gate Controller
+Controls a LEGO motor to operate a swing gate from 0 to 90 degrees
+with automatic port detection and disconnect handling
+"""
+
+
+import time
+import threading
+from buildhat import Motor, Hat, Matrix, ColorSensor, ColorDistanceSensor, DistanceSensor, ForceSensor
+from buildhat.exc import DeviceError
+import sys
+import os
+
+
+# Configuration
+
+
+
+
+# Separate speed and ramp time settings for opening and closing
+OPEN_SPEED = 100        # Motor speed when opening (0-100)
+CLOSE_SPEED = 15      # Motor speed when closing (0-100)
+OPEN_RAMP_TIME = 0.2  # Time to ramp up/down speed when opening (seconds)
+CLOSE_RAMP_TIME = 5.0   # Time to ramp up/down speed when closing (seconds)
+
+
+# Wait time for race gate
+GATE_OPEN_WAIT_TIME = 5.0  # Time gate stays open before closing (seconds)
+
+
+# Motor holding power setting
+HOLD_POWER = 100  # Power level (0-100) to maintain position when gate is open
+
+
+# Power level (0-100) to maintain position when gate is closed
+CLOSED_HOLD_POWER = 100
+
+
+# Default speed for other operations
+DEFAULT_SPEED = 40      # Default motor speed for other operations (0-100)
+
+
+# Flag to control position monitoring thread
+position_monitor_active = False
+
+
+def clear_screen():
+   """Clear the terminal screen."""
+   os.system('clear')
+
+
+def check_buildhat_connection():
+   """Check if the BuildHAT is connected and get its status."""
+   try:
+       # Initialize the Hat class
+       hat = Hat()
+      
+       # Get the input voltage
+       voltage = hat.get_vin()
+       print(f"BuildHAT detected! Input voltage: {voltage:.2f}V")
+      
+       # Check if voltage is in a good range (7.5V-9V is ideal)
+       if voltage < 7.0:
+           print(f"⚠️ WARNING: Low input voltage ({voltage:.2f}V). Recommended: 7.5V-9V")
+       elif voltage > 9.5:
+           print(f"⚠️ WARNING: High input voltage ({voltage:.2f}V). Recommended: 7.5V-9V")
+      
+       # Set LEDs based on voltage
+       hat.set_leds(color='voltage')
+      
+       # Get connected devices overview
+       devices = hat.get()
+       if devices:
+           print("Currently connected devices:")
+           for port, device in devices.items():
+               if device:  # If not None, device is connected
+                   print(f"  Port {port}: {device}")
+      
+       return True
+   except Exception as e:
+       print(f"Error detecting BuildHAT: {e}")
+       print("Make sure the BuildHAT is properly connected to your Raspberry Pi.")
+       return False
+
+
+def detect_special_devices():
+   """Check for special devices like Matrix, ColorSensor before motor detection."""
+   ports = ['A', 'B', 'C', 'D']
+   special_devices = {}
+  
+   print("Checking for special devices...")
+  
+   for port in ports:
+       print(f"\nPort {port}:")
+       try:
+           # Try to detect a Matrix
+           try:
+               print(f"  Checking for Matrix...", end=" ", flush=True)
+               matrix = Matrix(port)
+               time.sleep(0.3)
+               description = matrix.description
+               print(f"Found! LED Matrix ({description})")
+               special_devices[port] = ("Matrix", description)  # Store description, not object
+               # Release the device properly
+               matrix.clear()  # Clear display
+               del matrix  # Release object
+               continue  # If Matrix found, continue to next port
+           except Exception as e:
+               print("Not found")
+          
+           # Try to detect a ColorSensor
+           try:
+               print(f"  Checking for ColorSensor...", end=" ", flush=True)
+               color_sensor = ColorSensor(port)
+               time.sleep(0.3)
+               description = color_sensor.description
+               print(f"Found! Color Sensor ({description})")
+               special_devices[port] = ("ColorSensor", description)  # Store description, not object
+               # Properly release the device
+               del color_sensor
+               continue  # If ColorSensor found, continue to next port
+           except Exception as e:
+               print("Not found")
+              
+           # Try to detect a ColorDistanceSensor
+           try:
+               print(f"  Checking for ColorDistanceSensor...", end=" ", flush=True)
+               color_distance = ColorDistanceSensor(port)
+               time.sleep(0.3)
+               description = color_distance.description
+               print(f"Found! Color Distance Sensor ({description})")
+               special_devices[port] = ("ColorDistanceSensor", description)  # Store description, not object
+               # Properly release the device
+               del color_distance
+               continue  # If ColorDistanceSensor found, continue to next port
+           except Exception as e:
+               print("Not found")
+          
+           # Try to detect a DistanceSensor
+           try:
+               print(f"  Checking for DistanceSensor...", end=" ", flush=True)
+               distance = DistanceSensor(port)
+               time.sleep(0.3)
+               description = distance.description
+               print(f"Found! Distance Sensor ({description})")
+               special_devices[port] = ("DistanceSensor", description)  # Store description, not object
+               # Properly release the device
+               del distance
+               continue  # If DistanceSensor found, continue to next port
+           except Exception as e:
+               print("Not found")
+          
+           # Try to detect a ForceSensor
+           try:
+               print(f"  Checking for ForceSensor...", end=" ", flush=True)
+               force = ForceSensor(port)
+               time.sleep(0.3)
+               description = force.description
+               print(f"Found! Force Sensor ({description})")
+               special_devices[port] = ("ForceSensor", description)  # Store description, not object
+               # Properly release the device
+               del force
+               continue  # If ForceSensor found, continue to next port
+           except Exception as e:
+               print("Not found")
+              
+           print("  No special device detected on this port")
+          
+       except Exception as e:
+           print(f"  Error checking port {port}: {e}")
+  
+   # No need to clean up devices here since we're immediately releasing them after detection
+  
+   print("\n")  # Add extra blank line before motor scanning
+   return special_devices
+
+
+
+
+
+
+
+
+def detect_motors():
+   """Detect motors connected to ports A through D."""
+   ports = ['A', 'B', 'C', 'D']
+   connected_ports = []
+  
+   print("Scanning for connected motors...")
+  
+   for port in ports:
+       try:
+           # Attempt to connect to a motor on each port
+           print(f"Checking port {port}...", end="", flush=True)
+           motor = Motor(port)
+          
+           # Wait a moment for the motor to initialize
+           time.sleep(0.5)
+          
+           # Get basic info to confirm it's connected
+           type_id = motor.typeid
+           description = motor.description
+          
+           print(f" Found: {description} (ID: {type_id})")
+           connected_ports.append((port, description, type_id))
+          
+           # Release the motor to avoid conflicts
+           try:
+               motor.stop()  # First try to stop it safely
+           except Exception:
+               pass  # Ignore errors during cleanup
+          
+           # Explicitly delete the motor object
+           del motor
+          
+       except Exception as e:
+           print(f" No motor detected")
+  
+   return connected_ports
+
+
+def select_port(connected_ports):
+   """Allow user to select a port from the available ones."""
+   if not connected_ports:
+       print("\nNo motors detected on any port!")
+       print("Options:")
+       print("1. Retry detection")
+       print("2. Manually select a port")
+       print("3. Exit")
+      
+       choice = input("Choice: ").strip()
+       if choice == '1':
+           return select_port(detect_motors())
+       elif choice == '2':
+           pass  # Continue to manual selection below
+       else:
+           sys.exit(0)
+   else:
+       print("\nDetected motors:")
+       for i, (port, desc, type_id) in enumerate(connected_ports, 1):
+           print(f"{i}. Port {port}: {desc} (ID: {type_id})")
+       print(f"{len(connected_ports) + 1}. Manually select a different port")
+       print(f"{len(connected_ports) + 2}. Exit")
+      
+       choice = input("Select motor: ").strip()
+       try:
+           choice_num = int(choice)
+           if 1 <= choice_num <= len(connected_ports):
+               return connected_ports[choice_num - 1][0]
+           elif choice_num == len(connected_ports) + 1:
+               pass  # Continue to manual selection
+           else:
+               sys.exit(0)
+       except ValueError:
+           pass  # Continue to manual selection if input wasn't a number
+  
+   # Manual port selection
+   print("\nManual port selection:")
+   print("A. Port A")
+   print("B. Port B")
+   print("C. Port C")
+   print("D. Port D")
+   print("Q. Exit")
+  
+   while True:
+       choice = input("Select port: ").strip().upper()
+       if choice in ['A', 'B', 'C', 'D']:
+           return choice
+       elif choice == 'Q':
+           sys.exit(0)
+       else:
+           print("Invalid selection. Please choose A, B, C, D, or Q.")
+
+
+def connect_motor(port):
+   """Connect to the motor and handle potential errors."""
+   try:
+       print(f"Connecting to LEGO motor on port {port}...")
+       motor = Motor(port)
+       print(f"Motor connected. Type ID: {motor.typeid}")
+       print(f"Description: {motor.description}")
+      
+       # Get current position - this will also verify motor is responsive
+       try:
+           position = motor.get_position()
+           print(f"Current position: {position}")
+       except Exception as e:
+           print(f"Warning: Could not read position ({e}), but continuing...")
+          
+       return motor
+   except Exception as e:
+       print(f"Error connecting to motor: {e}")
+       print("Make sure the BuildHAT is properly connected and the motor is plugged into the correct port.")
+       return None
+
+
+def is_motor_connected(motor):
+   """Check if the motor is still connected."""
+   try:
+       if motor is None:
+           return False
+          
+       # Try to read the position as a connection test
+       position = motor.get_position()
+       return True
+   except DeviceError:
+       return False
+   except Exception:
+       return False
+
+
+def safe_stop_motor(motor):
+   """Safely stop a motor, handling disconnection errors."""
+   if motor is None:
+       return
+      
+   try:
+       motor.stop()
+   except DeviceError:
+       print("Motor disconnected - cannot stop.")
+   except Exception as e:
+       print(f"Error stopping motor: {e}")
+
+
+def position_monitor_thread(motor):
+   """Thread function to continuously display motor position."""
+   global position_monitor_active
+  
+   print("\nPosition monitor started.")
+  
+   try:
+       last_position = None  # Track the last position we printed
+       last_print_time = 0   # Track the last time we printed
+      
+       while position_monitor_active:
+           current_time = time.time()
+          
+           if is_motor_connected(motor):
+               try:
+                   position = motor.get_position()
+                  
+                   # Only print when position changes (and print at least every 5 seconds)
+                   if position != last_position or (current_time - last_print_time) > 5:
+                       # Only print if this is a new position
+                       if position != last_position:
+                           print(f"\n[POSITION] Current position: {position} degrees", flush=True)
+                           last_position = position
+                           last_print_time = current_time
+                      
+               except Exception:
+                   if last_position != "error" or (current_time - last_print_time) > 5:
+                       print("\n[POSITION] Error reading position", flush=True)
+                       last_position = "error"
+                       last_print_time = current_time
+           else:
+               if last_position != "disconnected" or (current_time - last_print_time) > 5:
+                   print("\n[POSITION] Motor disconnected", flush=True)
+                   last_position = "disconnected"
+                   last_print_time = current_time
+                  
+           time.sleep(1)
+   except Exception as e:
+       print(f"\n[POSITION] Monitor error: {e}", flush=True)
+
+
+def start_position_monitor(motor):
+   """Start the position monitoring thread."""
+   global position_monitor_active
+  
+   if not is_motor_connected(motor):
+       print("Cannot start position monitor - motor disconnected.")
+       return False
+  
+   position_monitor_active = True
+   monitor_thread = threading.Thread(target=position_monitor_thread, args=(motor,))
+   monitor_thread.daemon = True  # Set as daemon so it exits when main program exits
+   monitor_thread.start()
+   return True
+
+
+def stop_position_monitor():
+   """Stop the position monitoring thread."""
+   global position_monitor_active
+   position_monitor_active = False
+   time.sleep(1.1)  # Wait slightly longer than monitor update interval
+   print("\nPosition monitor stopped.")
+
+
+def initialize_motor(motor):
+   """Initialize the motor by setting it to the closed position."""
+   global GATE_CLOSED_ANGLE, GATE_OPEN_ANGLE
+  
+   if motor is None:
+       print("No motor connected.")
+       return False
+      
+   try:
+       print("Initializing motor...")
+       safe_stop_motor(motor)
+       time.sleep(0.5)
+      
+       # Check if motor is still connected
+       if not is_motor_connected(motor):
+           print("Motor was disconnected during initialization.")
+           return False
+          
+       # Set motor parameters
+       motor.set_default_speed(DEFAULT_SPEED)
+       print(f"Motor speed set to {DEFAULT_SPEED}%")
+      
+       # Run at a slow speed until resistance is felt to find home position
+       print("Finding home position...")
+       motor.run_for_seconds(2, -10)
+      
+       # Check if motor is still connected
+       if not is_motor_connected(motor):
+           print("Motor was disconnected during initialization.")
+           return False
+          
+       safe_stop_motor(motor)
+      
+       # Reset position to 0
+       print("Moving to closed position (0 degrees)...")
+       motor.run_to_position(0, DEFAULT_SPEED, blocking=True)
+       time.sleep(0.5)  # Give time to settle
+      
+       # Check how close we are to 0
+       current_pos = motor.get_position()
+       print(f"Initial position after setup: {current_pos} degrees")
+      
+       # Fine-tune to exactly 0 degrees if needed
+       # Using a wider tolerance of ±3 degrees as requested
+       calibrated_home_position = current_pos  # Start with current position as default
+      
+       if abs(current_pos - 0) > 3:  # If we're more than 3 degrees off
+           print(f"Fine-tuning home position to within ±3 degrees of zero...")
+          
+           # Use a gentle approach with lower speed for precision
+           calibration_speed = 30  # Low speed for precise positioning
+          
+           # Try with gentle approach
+           motor.run_to_position(0, calibration_speed, blocking=True)
+           time.sleep(0.5)  # Give time to settle
+          
+           # Check final position
+           final_pos = motor.get_position()
+           calibrated_home_position = final_pos  # Update to calibrated position
+          
+           # If still off by more than ±3 degrees, try one more time with higher power
+           if abs(final_pos - 0) > 3:
+               print(f"More precise calibration needed (currently at {final_pos})...")
+               motor.run_to_position(0, 50, blocking=True)
+               time.sleep(0.5)
+               final_pos = motor.get_position()
+               calibrated_home_position = final_pos  # Update to final calibrated position
+          
+           if abs(final_pos) <= 3:
+               print(f"Successfully calibrated to home position: {final_pos} degrees (within ±3° tolerance)")
+           else:
+               print(f"Note: Could not reach exact zero position. Current: {final_pos} degrees")
+       else:
+           print(f"Motor already at acceptable home position: {current_pos} degrees (within ±3° tolerance)")
+      
+       # ===== NEW CODE: Set dynamic gate angles based on calibrated home position =====
+       # Update the global gate angle settings based on the calibrated home position
+       GATE_CLOSED_ANGLE = calibrated_home_position
+      
+       # Calculate open angle relative to the calibrated home position
+       # If the original GATE_OPEN_ANGLE was -140, make it relative to the calibrated home
+       target_open_travel = -140  # The desired angular travel from closed to open
+       GATE_OPEN_ANGLE = GATE_CLOSED_ANGLE + target_open_travel
+      
+       print(f"Dynamic gate angles set based on calibration:")
+       print(f"  - Closed position: {GATE_CLOSED_ANGLE} degrees")
+       print(f"  - Open position: {GATE_OPEN_ANGLE} degrees")
+       # ===== END NEW CODE =====
+      
+       # Apply holding power to maintain closed position
+       if CLOSED_HOLD_POWER > 0:
+           print(f"Applying closed holding power ({CLOSED_HOLD_POWER}%) to prevent movement...")
+           # Direction may need adjustment based on your setup
+           hold_direction = 1  # Try -1 if this doesn't work
+           motor.start(CLOSED_HOLD_POWER * hold_direction)
+           time.sleep(0.2)  # Brief pause to ensure power is applied
+           print("1")
+          
+           print("Gate secured in closed position.")
+      
+       print("Motor initialized to closed position (within ±3° of 0 degrees)")
+       return True
+   except DeviceError:
+       print("Motor disconnected during initialization.")
+       return False
+   except Exception as e:
+       print(f"Error initializing motor: {e}")
+       return False
+
+
+def ramp_speed(motor, target_speed, ramp_time=1.0):
+   """Gradually ramp up motor speed to avoid current spikes."""
+   if not is_motor_connected(motor):
+       print("Motor disconnected - cannot ramp speed.")
+       return False
+      
+   try:
+       current_speed = 0
+       steps = 10
+       step_time = ramp_time / steps
+       step_speed = target_speed / steps
+      
+       for i in range(steps):
+           current_speed += step_speed
+           motor.start(current_speed)
+           time.sleep(step_time)
+          
+           # Check connection after each step
+           if not is_motor_connected(motor):
+               print("Motor disconnected during speed ramping.")
+               return False
+              
+       return True
+   except Exception as e:
+       print(f"Error during speed ramping: {e}")
+       return False
+
+
+def open_gate(motor):
+   """Open the gate to GATE_OPEN_ANGLE degrees."""
+   if not is_motor_connected(motor):
+       print("Motor disconnected - cannot open gate.")
+       return False
+      
+   try:
+       print(f"Opening gate to {GATE_OPEN_ANGLE} degrees...")
+      
+       # Stop any holding power that might be applied
+       motor.stop()
+       time.sleep(0.1)  # Brief pause
+      
+       # Important: Force direct method that worked previously
+       motor.set_default_speed(OPEN_SPEED)
+      
+       # Direct approach without ramping logic
+       # This is a simpler approach that avoids the issue
+       if GATE_OPEN_ANGLE < 0:
+           # For negative angles like -90
+           motor.run_to_position(GATE_OPEN_ANGLE, OPEN_SPEED, blocking=True)
+       else:
+           # For positive angles (unlikely in your case)
+           motor.run_to_position(GATE_OPEN_ANGLE, OPEN_SPEED, blocking=True)
+      
+       # Get current time for timestamp
+       current_time = time.strftime("%H:%M:%S", time.localtime())
+      
+       # Verify position reached
+       if is_motor_connected(motor):
+           current_pos = motor.get_position()
+           if abs(current_pos - GATE_OPEN_ANGLE) > 5:
+               print(f"Warning: Gate stopped at {current_pos}, target was {GATE_OPEN_ANGLE}")
+          
+       # Print gate opened message with timestamp
+       print(f"Gate opened at {current_time}!")
+       return True
+   except DeviceError:
+       print("Motor disconnected while opening gate.")
+       return False
+   except Exception as e:
+       print(f"Error opening gate: {e}")
+       return False
+
+
+def close_gate(motor):
+    """Close the gate to GATE_CLOSED_ANGLE degrees with verification."""
+    global CLOSED_HOLD_POWER
+  
+    if not is_motor_connected(motor):
+        print("Motor disconnected - cannot close gate.")
+        return False
+      
+    try:
+        print(f"Closing gate to {GATE_CLOSED_ANGLE} degrees...")
+      
+        # Important: Force direct method that worked previously
+        motor.set_default_speed(CLOSE_SPEED)
+      
+        # Direct approach without ramping logic
+        motor.run_to_position(GATE_CLOSED_ANGLE, CLOSE_SPEED, blocking=True)
+      
+        # Get the actual position after movement
+        time.sleep(0.4)  # Brief pause to let motor settle
+        current_pos = motor.get_position()
+      
+        # Get current time for timestamp
+        current_time = time.strftime("%H:%M:%S", time.localtime())
+      
+        # Verify we reached the closed position
+        if abs(current_pos - GATE_CLOSED_ANGLE) > 3:  # If we're more than 3 degrees off
+            print(f"Gate didn't fully close (at {current_pos}). Retrying...")
+          
+            # Try again with more power
+            motor.run_to_position(GATE_CLOSED_ANGLE, CLOSE_SPEED + 20, blocking=True)
+            time.sleep(0.2)
+          
+            # Check position again and update timestamp
+            current_pos = motor.get_position()
+            current_time = time.strftime("%H:%M:%S", time.localtime())  # Update timestamp after retry
+          
+            if abs(current_pos - GATE_CLOSED_ANGLE) > 3:
+                print(f"Warning: Gate closed to {current_pos}, target was {GATE_CLOSED_ANGLE}")
+            else:
+                print(f"Gate fully closed to {current_pos} degrees")
+        else:
+            print(f"Gate fully closed to {current_pos} degrees")
+      
+        # Check if still connected
+        if not is_motor_connected(motor):
+            print("Motor disconnected while closing gate.")
+            return False
+      
+        # Apply holding power to keep gate closed against pressure from cars
+        if CLOSED_HOLD_POWER > 0:
+            # Direction depends on your setup - adjust sign as needed
+            # Positive value provides clockwise resistance
+            # Negative value provides counter-clockwise resistance
+            hold_direction = 1  # Default direction (may need to be -1 depending on setup)
+          
+            print(f"Applying closed holding power ({CLOSED_HOLD_POWER}%) to maintain position...")
+            #motor.start(CLOSED_HOLD_POWER * hold_direction)  # Apply continuous power
+            #print("2")
+      
+        # Print gate closed message with timestamp
+        print(f"Gate closed at {current_time}!")
+        return True
+    except DeviceError:
+        print("Motor disconnected while closing gate.")
+        return False
+    except Exception as e:
+        print(f"Error closing gate: {e}")
+        return False
+
+
+
+
+def test_matrix(matrix_port):
+   """Test and demonstrate LED Matrix capabilities."""
+   try:
+       print("\n--- Testing LED Matrix on port " + matrix_port + " ---")
+      
+       # Initialize Matrix
+       matrix = Matrix(matrix_port)
+      
+       # First clear the matrix and pause briefly
+       print("Clearing matrix...")
+       matrix.clear()
+       time.sleep(0.5)
+      
+       # Display a welcome message
+       print("Displaying welcome pattern...")
+      
+       # Set all pixels to green at medium brightness
+       matrix.clear(("green", 5))
+       time.sleep(1)
+      
+       # Display a countdown from 3 to 1
+       for number in [3, 2, 1]:
+           print(f"Displaying number {number}...")
+          
+           # First clear
+           matrix.clear()
+          
+           if number == 3:
+               # Create a "3" pattern
+               pattern = [
+                   [(0, 0), ("red", 8)],
+                   [(1, 0), ("red", 8)],
+                   [(2, 0), ("red", 8)],
+                   [(2, 1), ("red", 8)],
+                   [(0, 2), ("red", 8)],
+                   [(1, 2), ("red", 8)],
+                   [(2, 2), ("red", 8)],
+                   [(2, 1), ("red", 8)]
+               ]
+           elif number == 2:
+               # Create a "2" pattern
+               pattern = [
+                   [(0, 0), ("orange", 8)],
+                   [(1, 0), ("orange", 8)],
+                   [(2, 0), ("orange", 8)],
+                   [(2, 1), ("orange", 8)],
+                   [(0, 2), ("orange", 8)],
+                   [(1, 2), ("orange", 8)],
+                   [(2, 2), ("orange", 8)],
+                   [(0, 1), ("orange", 8)]
+               ]
+           elif number == 1:
+               # Create a "1" pattern
+               pattern = [
+                   [(1, 0), ("yellow", 8)],
+                   [(1, 1), ("yellow", 8)],
+                   [(1, 2), ("yellow", 8)]
+               ]
+              
+           # Display the pattern
+           for coord, pixel in pattern:
+               matrix.set_pixel(coord, pixel)
+              
+           time.sleep(1)
+      
+       # Display "GO!" with all green
+       print("Displaying GO!")
+       matrix.clear(("green", 10))
+       time.sleep(1)
+      
+       # Demonstrate gate status indicators
+       print("\nDemonstrating gate status indicators...")
+      
+       # Gate closed indicator (red X)
+       print("Gate CLOSED indicator (red X)")
+       matrix.clear()
+       closed_pattern = [
+           [(0, 0), ("red", 8)],
+           [(1, 1), ("red", 8)],
+           [(2, 2), ("red", 8)],
+           [(0, 2), ("red", 8)],
+           [(2, 0), ("red", 8)]
+       ]
+       for coord, pixel in closed_pattern:
+           matrix.set_pixel(coord, pixel)
+       time.sleep(2)
+      
+       # Gate open indicator (green checkmark)
+       print("Gate OPEN indicator (green checkmark)")
+       matrix.clear()
+       open_pattern = [
+           [(0, 1), ("green", 8)],
+           [(1, 2), ("green", 8)],
+           [(2, 0), ("green", 8)]
+       ]
+       for coord, pixel in open_pattern:
+           matrix.set_pixel(coord, pixel)
+       time.sleep(2)
+      
+       # Demo color range with transition effects
+       print("Demonstrating color transition effects...")
+      
+       # Set transition mode to fade
+       print("Setting transition mode to fade...")
+       matrix.set_transition(2)  # Mode 2: Fade
+      
+       # Display different colors one after another
+       colors = ["red", "orange", "yellow", "green", "turquoise",
+                "cyan", "blue", "lilac", "pink", "white"]
+      
+       print("Cycling through colors...")
+       for color in colors:
+           print(f"Setting all pixels to {color}...")
+           matrix.clear((color, 10))
+           time.sleep(1)
+      
+       # Reset transition mode
+       matrix.set_transition(0)
+      
+       # Finish with a custom pattern
+       print("Final custom pattern...")
+       matrix.clear()
+       custom_pattern = [
+           [(0, 0), ("red", 8)],
+           [(0, 1), ("orange", 8)],
+           [(0, 2), ("yellow", 8)],
+           [(1, 0), ("green", 8)],
+           [(1, 1), ("blue", 8)],
+           [(1, 2), ("lilac", 8)],
+           [(2, 0), ("pink", 8)],
+           [(2, 1), ("cyan", 8)],
+           [(2, 2), ("white", 8)]
+       ]
+       for coord, pixel in custom_pattern:
+           matrix.set_pixel(coord, pixel)
+          
+       time.sleep(2)
+      
+       # Clear the matrix before finishing
+       print("Test complete. Clearing matrix...")
+       matrix.clear()
+      
+       return True
+      
+   except Exception as e:
+       print(f"Error testing Matrix: {e}")
+       return False
+
+
+# Global variable to store the Matrix object when available
+matrix_display = None
+
+
+def initialize_matrix(port):
+   """Initialize the Matrix LED display on the specified port."""
+   global matrix_display
+  
+   try:
+       matrix_display = Matrix(port)
+       matrix_display.clear()
+       print(f"Matrix display initialized on port {port}")
+       return True
+   except Exception as e:
+       print(f"Could not initialize Matrix display: {e}")
+       matrix_display = None
+       return False
+
+
+def display_countdown_on_matrix(seconds):
+   """Display countdown visualization on the Matrix LED."""
+   global matrix_display
+  
+   if not matrix_display:
+       return  # No matrix available
+  
+   try:
+       if seconds > 3:
+           # Pulse yellow while waiting
+           matrix_display.clear(("yellow", 3))
+           time.sleep(0.2)
+           matrix_display.clear(("yellow", 6))
+           time.sleep(0.2)
+           matrix_display.clear(("yellow", 3))
+      
+       elif seconds == 3:
+           # Top row red, others off
+           matrix_display.clear()
+           for x in range(3):
+               matrix_display.set_pixel((x, 0), ("red", 8))
+      
+       elif seconds == 2:
+           # Top and middle rows red, bottom off
+           matrix_display.clear()
+           for x in range(3):
+               matrix_display.set_pixel((x, 0), ("red", 8))
+               matrix_display.set_pixel((x, 1), ("red", 8))
+      
+       elif seconds == 1:
+           # All rows red
+           matrix_display.clear(("red", 8))
+      
+       elif seconds == 0:
+           # All green for GO!
+           matrix_display.clear(("green", 10))
+  
+   except Exception as e:
+       # Silently handle errors - we don't want Matrix issues to stop the gate demo
+       pass
+
+
+def display_gate_status_on_matrix(is_open):
+   """Display the gate status on the Matrix LED."""
+   global matrix_display
+  
+   if not matrix_display:
+       return  # No matrix available
+  
+   try:
+       if is_open:
+           # Gate open indicator (green checkmark)
+           matrix_display.clear()
+           open_pattern = [
+               [(0, 1), ("green", 8)],
+               [(1, 2), ("green", 8)],
+               [(2, 0), ("green", 8)]
+           ]
+           for coord, pixel in open_pattern:
+               matrix_display.set_pixel(coord, pixel)
+       else:
+           # Gate closed indicator (red X)
+           matrix_display.clear()
+           closed_pattern = [
+               [(0, 0), ("red", 8)],
+               [(1, 1), ("red", 8)],
+               [(2, 2), ("red", 8)],
+               [(0, 2), ("red", 8)],
+               [(2, 0), ("red", 8)]
+           ]
+           for coord, pixel in closed_pattern:
+               matrix_display.set_pixel(coord, pixel)
+  
+   except Exception as e:
+       # Silently handle errors
+       pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def run_demo(motor):
+    """Run a demonstration of the gate opening and closing."""
+    if not is_motor_connected(motor):
+        print("Motor disconnected - cannot run demo.")
+        return False
+        
+    print("\n--- Starting Gate Demo ---")
+
+    # Display closed status on Matrix if available
+    display_gate_status_on_matrix(is_open=False)
+    
+    # Open and close the gate three times
+    for i in range(3):
+        print(f"\nCycle {i+1}/3")
+        
+        # Ensure we start from the closed position
+        if i > 0:  # Only need to do this after the first cycle
+            # Check current position
+            current_pos = motor.get_position()
+            if abs(current_pos - GATE_CLOSED_ANGLE) > 3:
+                print(f"Repositioning to closed position before next cycle (currently at {current_pos})...")
+                
+                # First stop any existing holding power
+                motor.stop()
+                time.sleep(0.1)
+                
+                # Move to closed position
+                motor.run_to_position(GATE_CLOSED_ANGLE, CLOSE_SPEED, blocking=True)
+                time.sleep(0.3)  # Brief pause
+                
+                # Immediately reapply holding power
+                if CLOSED_HOLD_POWER > 0:
+                    hold_direction = 1  # Default direction (may need to be -1 depending on setup)
+                    print(f"Applying closed holding power ({CLOSED_HOLD_POWER}%) to maintain position...")
+                    motor.start(CLOSED_HOLD_POWER * hold_direction)  # Apply continuous power
+                    time.sleep(0.1)  # Brief pause to ensure power is applied
+                    print("3")
+        
+        # Start countdown BEFORE opening gate
+        print(f"Starting countdown - gate will open in {GATE_OPEN_WAIT_TIME} seconds...")
+        
+        # Wait for the specified countdown time with display
+        wait_start = time.time()
+        wait_end = wait_start + GATE_OPEN_WAIT_TIME
+        
+        # Display yellow pulsing until 3 seconds remaining
+        while time.time() < wait_end - 3:
+            remaining = int(wait_end - time.time())
+            print(f"\rGate opens in {remaining} seconds...", end="", flush=True)
+            
+            # Yellow pulse on matrix
+            if matrix_display:
+                # Pulse between dim and bright yellow
+                matrix_display.clear(("yellow", 3))
+                time.sleep(0.2)
+                matrix_display.clear(("yellow", 6))
+                time.sleep(0.2)
+        
+        # 3 seconds remaining - top row red
+        if time.time() < wait_end:
+            remaining = 3
+            print(f"\rGate opens in {remaining} seconds...", end="", flush=True)
+            
+            if matrix_display:
+                matrix_display.clear()  # Clear first
+                for x in range(3):
+                    matrix_display.set_pixel((x, 0), ("red", 8))
+            
+            # Wait until 2 seconds remaining
+            while time.time() < wait_end - 2:
+                time.sleep(0.1)
+        
+        # 2 seconds remaining - top and middle row red
+        if time.time() < wait_end:
+            remaining = 2
+            print(f"\rGate opens in {remaining} seconds...", end="", flush=True)
+            
+            if matrix_display:
+                matrix_display.clear()  # Clear first
+                for x in range(3):
+                    matrix_display.set_pixel((x, 0), ("red", 8))
+                    matrix_display.set_pixel((x, 1), ("red", 8))
+            
+            # Wait until 1 second remaining
+            while time.time() < wait_end - 1:
+                time.sleep(0.1)
+        
+        # 1 second remaining - all rows red
+        if time.time() < wait_end:
+            remaining = 1
+            print(f"\rGate opens in {remaining} second...", end="", flush=True)
+            
+            if matrix_display:
+                matrix_display.clear(("red", 8))  # All LEDs red
+            
+            # Wait until time to open
+            while time.time() < wait_end:
+                time.sleep(0.1)
+        
+        # Time to open - GO!
+        print("\rGate opening now!                      ")
+        if matrix_display:
+            matrix_display.clear(("green", 10))  # All LEDs bright green
+            time.sleep(0.5)  # Brief pause to show the GO signal
+
+        # Stop holding power RIGHT BEFORE opening the gate - minimizing the gap
+        motor.stop()
+        time.sleep(0.15)  # Absolute minimum pause - just enough for motor control to reset
+        
+        # NOW open the gate
+        if not open_gate(motor):
+            print("Demo aborted due to motor disconnection.")
+            return False
+            
+        # Check if still connected before waiting
+        if not is_motor_connected(motor):
+            print("Motor disconnected during demo.")
+            return False
+        
+        # Update matrix to show open status
+        display_gate_status_on_matrix(is_open=True)
+            
+        print(f"Gate open - waiting {GATE_OPEN_WAIT_TIME} seconds before closing...")
+        
+        # Apply holding power to resist gravity during the wait time
+        print(f"Applying holding power ({HOLD_POWER}%) to maintain position...")
+        
+        # Since your gate opens to a negative angle, we need negative power to hold it
+        try:
+            # Start the motor with continuous power to resist gravity
+            motor.start(-HOLD_POWER)  # Negative power because gate opens to negative angles
+            
+            # Just wait - no need for another countdown here
+            time.sleep(GATE_OPEN_WAIT_TIME)
+            
+            # Stop the holding power before attempting to close
+            motor.stop()
+            time.sleep(0.2)  # Brief pause after stopping
+            
+        except Exception as e:
+            print(f"Error during hold: {e}")
+            motor.stop()  # Make sure we stop the motor even on error
+        
+        print("Closing gate now...")
+        if not close_gate(motor):
+            print("Demo aborted due to motor disconnection.")
+            return False
+        
+        # Update matrix to show closed status
+        display_gate_status_on_matrix(is_open=False)
+            
+        # Check if still connected before waiting
+        if not is_motor_connected(motor):
+            print("Motor disconnected during demo.")
+            return False
+
+        # ===== IMPROVED HOLDING POWER MANAGEMENT =====
+        # After closing, verify position but minimize adjustments
+        
+        current_pos = motor.get_position()
+        print(f"Verifying closed position (currently at {current_pos}°)...")
+        
+        # Only attempt calibration if position is significantly off 
+        # This is a more aggressive threshold to avoid unnecessary adjustments
+        if abs(current_pos - GATE_CLOSED_ANGLE) > 5:  # Only calibrate if more than 5 degrees off
+            print(f"Position significantly off target! Needs adjustment from {current_pos}° to {GATE_CLOSED_ANGLE}°")
+            
+            # Temporarily stop holding power for accurate calibration
+            print("Releasing holding power for repositioning...")
+            motor.stop()
+            time.sleep(0.2)
+            
+            # Now run calibration with higher power for a decisive movement
+            try:
+                print("Moving to correct closed position...")
+                motor.run_to_position(GATE_CLOSED_ANGLE, 50, blocking=True)  # Use higher power right away
+                time.sleep(0.3)  # Give time to settle
+                
+                # Check final position
+                final_pos = motor.get_position()
+                print(f"Repositioning complete - now at {final_pos}° (target: {GATE_CLOSED_ANGLE}°)")
+            
+            except Exception as e:
+                print(f"\nError during repositioning: {e}")
+                # Make sure motor is stopped
+                try:
+                    motor.stop()
+                except:
+                    pass
+            
+            # Always reapply holding power after calibration with maximum strength
+            print(f"Applying strong holding power ({CLOSED_HOLD_POWER}%) to maintain position...")
+            hold_direction = 1  # Default direction (may need to be -1 depending on setup)
+            motor.start(CLOSED_HOLD_POWER * hold_direction)  # Apply continuous power
+            time.sleep(0.2)  # Brief pause to ensure power is applied
+            print("4")
+        else:
+            # Even if position is good, verify that holding power is still active
+            # This extra check ensures holding power is maintained
+            print(f"Gate position within acceptable range ({current_pos}°)")
+            
+            # Strengthen holding power to ensure it doesn't drift
+            print(f"Reinforcing holding power ({CLOSED_HOLD_POWER}%) to prevent drift...")
+            hold_direction = 1  # Default direction (may need to be -1 depending on setup)
+            motor.start(CLOSED_HOLD_POWER * hold_direction)  # Apply continuous power
+            time.sleep(0.1)  # Brief pause to ensure power is applied
+            print("5")
+
+        print("Preparing for next cycle...")
+        time.sleep(1)  # Brief pause between cycles
+        # ===== END IMPROVED HOLDING POWER MANAGEMENT =====
+
+    print("\nDemo complete!")
+    return True
+
+
+def interactive_mode(motor):
+   """Run an interactive mode where the user can control the gate."""
+   # Declare all globals at the beginning of the function
+   global OPEN_SPEED, CLOSE_SPEED, OPEN_RAMP_TIME, CLOSE_RAMP_TIME, GATE_OPEN_WAIT_TIME, HOLD_POWER, CLOSED_HOLD_POWER
+  
+   print("\n--- Interactive Gate Control ---")
+   print("Commands:")
+   print("  o - Open gate")
+   print("  c - Close gate")
+   print("  p XX - Move to position XX degrees")
+   print("  so XX - Set opening speed to XX%")
+   print("  sc XX - Set closing speed to XX%")
+   print("  ro XX - Set opening ramp time to XX seconds")
+   print("  rc XX - Set closing ramp time to XX seconds")
+   print("  w XX - Set gate open wait time to XX seconds")
+   print("  h XX - Set holding power to XX% (0-100)")
+   print("  ch XX - Set closed holding power to XX% (0-100)")
+   print("  m - Toggle position monitor (shows current position every second)")
+   print("  r - Reconnect motor (if disconnected)")
+   print("  q - Quit")
+  
+   # Start position monitor by default
+   monitor_active = False
+  
+   while True:
+       cmd = input("\nEnter command: ").strip().lower()
+      
+       if cmd == 'q':
+           print("Exiting...")
+           if monitor_active:
+               stop_position_monitor()
+           break
+       elif cmd == 'm':
+           if monitor_active:
+               stop_position_monitor()
+               monitor_active = False
+           else:
+               if start_position_monitor(motor):
+                   monitor_active = True
+       elif cmd == 'r':
+           # Try to reconnect the motor
+           if monitor_active:
+               stop_position_monitor()
+               monitor_active = False
+          
+           print("Attempting to reconnect motor...")
+           try:
+               port = motor.get_port()
+               safe_stop_motor(motor)
+               motor = connect_motor(port)
+              
+               if motor is None or not is_motor_connected(motor):
+                   print("Failed to reconnect. Motor may be unplugged.")
+               else:
+                   print("Motor reconnected successfully!")
+                   if monitor_active:
+                       start_position_monitor(motor)
+           except Exception as e:
+               print(f"Error reconnecting: {e}")
+       elif cmd == 'o':
+           if not is_motor_connected(motor):
+               print("Motor disconnected. Use 'r' to reconnect.")
+           else:
+               open_gate(motor)
+       elif cmd == 'c':
+           if not is_motor_connected(motor):
+               print("Motor disconnected. Use 'r' to reconnect.")
+           else:
+               close_gate(motor)
+       elif cmd.startswith('p '):
+           if not is_motor_connected(motor):
+               print("Motor disconnected. Use 'r' to reconnect.")
+           else:
+               try:
+                   pos = int(cmd.split()[1])
+                   if -360 <= pos <= 360:  # Updated range to allow negative positions
+                       print(f"Moving to position {pos} degrees...")
+                      
+                       # Get current position to determine direction
+                       current_pos = motor.get_position()
+                      
+                       # Use ramping for smoother start
+                       if pos > current_pos:  # Moving forward
+                           ramp_speed(motor, DEFAULT_SPEED, OPEN_RAMP_TIME)
+                       else:  # Moving backward
+                           ramp_speed(motor, -DEFAULT_SPEED, CLOSE_RAMP_TIME)
+                          
+                       motor.run_to_position(pos, DEFAULT_SPEED, blocking=True)
+                       print(f"Reached position {pos} degrees")
+                   else:
+                       print("Position must be between -360 and 360 degrees")
+               except (ValueError, IndexError):
+                   print("Invalid position. Use format: p XX")
+               except DeviceError:
+                   print("Motor disconnected during movement. Use 'r' to reconnect.")
+       elif cmd.startswith('so '):
+           if not is_motor_connected(motor):
+               print("Motor disconnected. Use 'r' to reconnect.")
+           else:
+               try:
+                   speed = int(cmd.split()[1])
+                   if 0 <= speed <= 100:
+                       OPEN_SPEED = speed
+                       print(f"Opening speed set to {OPEN_SPEED}%")
+                   else:
+                       print("Speed must be between 0 and 100%")
+               except (ValueError, IndexError):
+                   print("Invalid speed. Use format: so XX")
+               except DeviceError:
+                   print("Motor disconnected. Use 'r' to reconnect.")
+       elif cmd.startswith('sc '):
+           if not is_motor_connected(motor):
+               print("Motor disconnected. Use 'r' to reconnect.")
+           else:
+               try:
+                   speed = int(cmd.split()[1])
+                   if 0 <= speed <= 100:
+                       CLOSE_SPEED = speed
+                       print(f"Closing speed set to {CLOSE_SPEED}%")
+                   else:
+                       print("Speed must be between 0 and 100%")
+               except (ValueError, IndexError):
+                   print("Invalid speed. Use format: sc XX")
+               except DeviceError:
+                   print("Motor disconnected. Use 'r' to reconnect.")
+       elif cmd.startswith('ro '):
+           if not is_motor_connected(motor):
+               print("Motor disconnected. Use 'r' to reconnect.")
+           else:
+               try:
+                   time_val = float(cmd.split()[1])
+                   if 0 <= time_val <= 10:
+                       OPEN_RAMP_TIME = time_val
+                       print(f"Opening ramp time set to {OPEN_RAMP_TIME} seconds")
+                   else:
+                       print("Ramp time must be between 0 and 10 seconds")
+               except (ValueError, IndexError):
+                   print("Invalid time value. Use format: ro XX")
+               except DeviceError:
+                   print("Motor disconnected. Use 'r' to reconnect.")
+       elif cmd.startswith('rc '):
+           if not is_motor_connected(motor):
+               print("Motor disconnected. Use 'r' to reconnect.")
+           else:
+               try:
+                   time_val = float(cmd.split()[1])
+                   if 0 <= time_val <= 10:
+                       CLOSE_RAMP_TIME = time_val
+                       print(f"Closing ramp time set to {CLOSE_RAMP_TIME} seconds")
+                   else:
+                       print("Ramp time must be between 0 and 10 seconds")
+               except (ValueError, IndexError):
+                   print("Invalid time value. Use format: rc XX")
+               except DeviceError:
+                   print("Motor disconnected. Use 'r' to reconnect.")
+       elif cmd.startswith('w '):
+           if not is_motor_connected(motor):
+               print("Motor disconnected. Use 'r' to reconnect.")
+           else:
+               try:
+                   time_val = float(cmd.split()[1])
+                   if 0 <= time_val <= 60:
+                       GATE_OPEN_WAIT_TIME = time_val
+                       print(f"Gate open wait time set to {GATE_OPEN_WAIT_TIME} seconds")
+                   else:
+                       print("Wait time must be between 0 and 60 seconds")
+               except (ValueError, IndexError):
+                   print("Invalid time value. Use format: w XX")
+               except DeviceError:
+                   print("Motor disconnected. Use 'r' to reconnect.")
+       elif cmd.startswith('ch '):
+           if not is_motor_connected(motor):
+               print("Motor disconnected. Use 'r' to reconnect.")
+           else:
+               try:
+                   power = int(cmd.split()[1])
+                   if 0 <= power <= 100:
+                       CLOSED_HOLD_POWER = power
+                       print(f"Closed holding power set to {CLOSED_HOLD_POWER}%")
+                   else:
+                       print("Holding power must be between 0 and 100%")
+               except (ValueError, IndexError):
+                   print("Invalid power value. Use format: ch XX")
+               except DeviceError:
+                   print("Motor disconnected. Use 'r' to reconnect.")
+       elif cmd.startswith('h '):
+           if not is_motor_connected(motor):
+               print("Motor disconnected. Use 'r' to reconnect.")
+           else:
+               try:
+                   power = int(cmd.split()[1])
+                   if 0 <= power <= 100:
+                       HOLD_POWER = power
+                       print(f"Holding power set to {HOLD_POWER}%")
+                   else:
+                       print("Holding power must be between 0 and 100%")
+               except (ValueError, IndexError):
+                   print("Invalid power value. Use format: h XX")
+               except DeviceError:
+                   print("Motor disconnected. Use 'r' to reconnect.")
+       else:
+           print("Unknown command")
+
+
+def main():
+   """Main function to run the gate controller."""
+   clear_screen()
+   print("=== Raspberry Pi BuildHAT Swing Gate Controller ===\n")
+  
+  
+  
+   # First check for special devices like Matrix, ColorSensors, etc.
+   special_devices = detect_special_devices()
+  
+   # Test Matrix if found
+   matrix_port = None
+   for port, (device_type, _) in special_devices.items():
+       if device_type == "Matrix":
+           matrix_port = port
+           break
+  
+   if matrix_port:
+       print(f"\nLED Matrix found on port {matrix_port}!")
+       test_choice = input("Would you like to run a demo of the LED Matrix? (y/n): ").strip().lower()
+       if test_choice == 'y':
+           # At this point, the port should be free because detect_special_devices
+           # released all connections
+           test_matrix(matrix_port)
+       # Initialize the Matrix for use in the program
+       print("Initializing Matrix for use during gate operation...")
+       initialize_matrix(matrix_port)
+  
+   # Detect motors and select port
+   print("\n")  # Add a separation line
+  
+  
+  
+   # Detect motors and select port
+   connected_ports = detect_motors()
+   selected_port = select_port(connected_ports)
+  
+   print(f"\nUsing motor on port {selected_port}")
+  
+   # Connect to the motor on selected port
+   motor = connect_motor(selected_port)
+  
+   # Check if motor connection succeeded
+   if motor is None:
+       print("Failed to connect to motor. Please check connections and try again.")
+       return
+  
+   # Initialize the motor
+   if not initialize_motor(motor):
+       print("Failed to initialize motor. Checking if motor is still connected...")
+       if not is_motor_connected(motor):
+           print("Motor appears to be disconnected.")
+           print("Would you like to retry with a different port? (y/n)")
+           choice = input().strip().lower()
+           if choice == 'y':
+               main()  # Restart the program
+           return
+  
+   # Start position monitor
+   start_position_monitor(motor)
+  
+   # Main program loop
+   while True:
+       # Check if motor is still connected before showing the menu
+       if not is_motor_connected(motor):
+           print("\n⚠️ WARNING: Motor disconnected! ⚠️")
+           print("Options:")
+           print("1. Reconnect current port")
+           print("2. Select different port")
+           print("3. Exit")
+          
+           choice = input("Choice: ").strip()
+           if choice == '1':
+               # Try to reconnect
+               stop_position_monitor()
+               motor = connect_motor(selected_port)
+               if motor is None or not is_motor_connected(motor):
+                   print("Failed to reconnect. Motor may be unplugged.")
+                   continue  # Go back to the disconnection menu
+               else:
+                   start_position_monitor(motor)
+           elif choice == '2':
+               # Clean up and go to port selection
+               try:
+                   stop_position_monitor()
+                   safe_stop_motor(motor)
+               except:
+                   pass
+              
+               connected_ports = detect_motors()
+               selected_port = select_port(connected_ports)
+               motor = connect_motor(selected_port)
+              
+               if motor is None:
+                   print("Failed to connect to motor. Please check connections and try again.")
+                   continue
+              
+               if not initialize_motor(motor):
+                   print("Failed to initialize motor.")
+                   continue
+              
+               start_position_monitor(motor)
+           else:
+               print("Exiting program...")
+               stop_position_monitor()
+               break
+      
+       # Display current settings
+       print(f"\nCurrent settings:")
+       print(f"  Opening: Speed {OPEN_SPEED}%, Ramp time {OPEN_RAMP_TIME} seconds")
+       print(f"  Closing: Speed {CLOSE_SPEED}%, Ramp time {CLOSE_RAMP_TIME} seconds")
+       print(f"  Gate open wait time: {GATE_OPEN_WAIT_TIME} seconds")
+       print(f"  Holding power: {HOLD_POWER}%")
+       print(f"  Closed holding power: {CLOSED_HOLD_POWER}%")
+      
+       # Main menu
+       print("\n" + "-" * 50)
+       print("Position monitor is running in the background")
+       print("(Position updates will appear above this menu)")
+       print("-" * 50 + "\n")
+
+
+       mode = input("Select mode:\n1. Run demo\n2. Interactive control\n3. Change port\n4. Reset motor position to 0\n5. Quit\nChoice: ").strip()
+      
+       if mode == '1':
+           run_demo(motor)
+       elif mode == '2':
+           # Stop the global position monitor during interactive mode
+           # since it will interfere with command input
+           stop_position_monitor()
+           interactive_mode(motor)
+           # Restart position monitor after exiting interactive mode
+           start_position_monitor(motor)
+       elif mode == '3':
+           # Clean up before changing port
+           print("Stopping motor...")
+           stop_position_monitor()
+           safe_stop_motor(motor)
+          
+           # Re-detect and select port
+           connected_ports = detect_motors()
+           selected_port = select_port(connected_ports)
+           print(f"\nUsing motor on port {selected_port}")
+           motor = connect_motor(selected_port)
+          
+           # Check if the connection succeeded
+           if motor is None:
+               print("Failed to connect to motor on the selected port.")
+               continue
+              
+           if not initialize_motor(motor):
+               print("Failed to initialize motor.")
+               continue
+              
+           # Restart position monitor
+           start_position_monitor(motor)
+      
+       # Replace the reset position code block with this simpler approach:
+       elif mode == '4':
+           print("Resetting motor to position 0...")
+           print("Press [Enter] to stop, or use arrow keys ⬅️➡️ to change direction.")
+
+
+           if not is_motor_connected(motor):
+               print("Motor disconnected - cannot move to 0.")
+           else:
+               try:
+                   import threading
+                   import sys
+                   import tty
+                   import termios
+
+
+                   cancel_flag = {'stop': False}
+                   direction_flag = {'reverse': True}  # Start in reverse (-360)
+
+
+                   def key_listener():
+                       fd = sys.stdin.fileno()
+                       old_settings = termios.tcgetattr(fd)
+                       tty.setcbreak(fd)
+                       try:
+                           while not cancel_flag['stop']:
+                               key = sys.stdin.read(1)
+                               if key == '\n':  # Enter key
+                                   cancel_flag['stop'] = True
+                               elif key == '\x1b':  # Arrow key prefix
+                                   if sys.stdin.read(1) == '[':
+                                       arrow = sys.stdin.read(1)
+                                       if arrow in ['C', 'D']:  # Right or Left
+                                           direction_flag['reverse'] = not direction_flag['reverse']
+                                           print(f"\n↔️ Direction toggled. Now turning: {'reverse' if direction_flag['reverse'] else 'forward'}")
+                       finally:
+                           termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+
+                   threading.Thread(target=key_listener, daemon=True).start()
+
+
+                   current_pos = motor.get_position()
+                   print(f"Starting position: {current_pos} degrees")
+
+
+                   while abs(current_pos) > 100:
+                       if cancel_flag['stop']:
+                           print("Unwinding stopped by user.")
+                           return
+
+
+                       print(f"Unwinding... current: {current_pos}")
+                       step = -360 if direction_flag['reverse'] else 360
+                       motor.run_for_degrees(step, speed=80, blocking=True)
+                       time.sleep(0.3)
+                       current_pos = motor.get_position()
+
+
+                   print("Fine-tuning to 0 degrees...")
+                   motor.run_to_position(0, speed=50, blocking=True)
+                   time.sleep(0.3)
+
+
+                   final_pos = motor.get_position()
+                   print(f"Final position before reset: {final_pos} degrees")
+
+
+                   motor.set_degrees_counted(0)
+                   print("✅ Motor encoder has been reset to 0 degrees.")
+
+
+               except Exception as e:
+                   print(f"Error during motor reset: {e}")
+
+
+       elif mode == '5':
+           print("Exiting program...")
+           stop_position_monitor()
+           break
+
+
+
+
+
+
+
+
+  
+   # Clean up
+   print("Stopping motor...")
+   safe_stop_motor(motor)
+   print("Goodbye!")
+
+
+if __name__ == "__main__":
+   try:
+       main()
+   except KeyboardInterrupt:
+       print("\nProgram interrupted!")
+       stop_position_monitor()
+       print("Program terminated.")
+       sys.exit(0)
+   except Exception as e:
+       print(f"\nUnexpected error: {e}")
+       stop_position_monitor()
+       print("Program terminated.")
+       sys.exit(1)
+
