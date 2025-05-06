@@ -1,6 +1,8 @@
 import asyncio
 import os
+import time
 from bleak import BleakScanner, BleakClient
+from bleak.exc import BleakError
 
 # File to save the previously discovered remote address (so next run is faster)
 ADDRESS_FILE = "remote_address.txt"
@@ -13,8 +15,11 @@ CHAR_UUID = "00001624-1212-efde-1623-785feabcd123"    # Characteristic UUID for 
 PORT_LEFT = 0x00
 PORT_RIGHT = 0x01
 
-# Keep track of last button states to avoid duplicate prints
+# Global variables
+button_callback = None
 last_button_states = {PORT_LEFT: None, PORT_RIGHT: None}
+reconnect_flag = True  # Flag to control reconnection loop
+connection_status = False  # Track if we're currently connected
 
 # Decode button signal values into human readable button events
 def parse_button(port, value):
@@ -39,7 +44,7 @@ def parse_button(port, value):
 
 # Called whenever the remote sends a notification (button pressed, released, etc)
 def notification_handler(sender, data):
-    global last_button_states
+    global last_button_states, button_callback
 
     # Always print raw packet for debug visibility
     print(f"Raw data: {list(data)}")
@@ -57,6 +62,10 @@ def notification_handler(sender, data):
         button_desc = parse_button(port, value)
         print("Button event:", button_desc)
         last_button_states[port] = value
+        
+        # Call the callback if one is set
+        if button_callback:
+            button_callback(port, value)
 
 # Send command to the LEGO handset telling it:
 # "Send me notifications when button state changes on this port"
@@ -82,36 +91,79 @@ async def enable_port_notifications(client, port):
     ])
     await client.write_gatt_char(CHAR_UUID, setup)
 
-# Main connection + listen logic
+# Checks if client is connected and responds
+async def is_client_connected(client):
+    try:
+        # Try to read a characteristic as a connection test
+        await client.get_services()
+        return True
+    except Exception:
+        return False
+
+# Main connection + listen logic with reconnect capability
 async def connect_and_listen(address):
-    async with BleakClient(address, address_type="random") as client:
-        print(f"Connected to remote [{address}]")
-
-        # Confirm and print discovered GATT services and characteristics
-        services = await client.get_services()
-        print(f"Using UUID: {CHAR_UUID}")
-        for service in services:
-            print(f"Service: {service.uuid}")
-            for char in service.characteristics:
-                print(f"  Characteristic: {char.uuid}")
-
-        # Enable notifications for both Left and Right ports → so remote sends button state changes
-        await enable_port_notifications(client, PORT_LEFT)
-        await enable_port_notifications(client, PORT_RIGHT)
-
-        # Start listening to notifications from the remote
-        await client.start_notify(CHAR_UUID, notification_handler)
-
-        print("Listening for button presses. Press Ctrl+C to exit.")
+    global reconnect_flag, connection_status
+    reconnect_flag = True
+    connection_status = False
+    
+    # Start the reconnection loop
+    while reconnect_flag:
         try:
-            # Keep program running until user stops it
-            while True:
-                await asyncio.sleep(1)
+            print(f"Connecting to remote [{address}]...")
+            async with BleakClient(address, address_type="random", timeout=10.0) as client:
+                # Print connection timestamp
+                timestamp = time.strftime("%H:%M:%S", time.localtime())
+                print(f"✅ CONNECTED at {timestamp} - Remote is ready! [{address}]")
+                connection_status = True
+
+                # Confirm and print discovered GATT services and characteristics
+                services = await client.get_services()
+                print(f"Using UUID: {CHAR_UUID}")
+                for service in services:
+                    print(f"Service: {service.uuid}")
+                    for char in service.characteristics:
+                        print(f"  Characteristic: {char.uuid}")
+
+                # Enable notifications for both Left and Right ports → so remote sends button state changes
+                await enable_port_notifications(client, PORT_LEFT)
+                await enable_port_notifications(client, PORT_RIGHT)
+
+                # Start listening to notifications from the remote
+                await client.start_notify(CHAR_UUID, notification_handler)
+
+                print("Listening for button presses. Press Ctrl+C to exit.")
+                
+                # Keep checking connection status
+                while await is_client_connected(client):
+                    await asyncio.sleep(1)
+                
+                # Connection lost - print disconnection timestamp
+                timestamp = time.strftime("%H:%M:%S", time.localtime())
+                print(f"❌ DISCONNECTED at {timestamp} - Remote turned off or out of range")
+                connection_status = False
+
+        except (BleakError, asyncio.TimeoutError) as e:
+            if connection_status:
+                # Only print disconnect message if we were previously connected
+                timestamp = time.strftime("%H:%M:%S", time.localtime())
+                print(f"❌ DISCONNECTED at {timestamp} - Connection error: {e}")
+                connection_status = False
+            else:
+                print(f"Connection error: {e}")
+            
         except KeyboardInterrupt:
-            print("Stopping...")
-        finally:
-            # Stop notifications when exiting
-            await client.stop_notify(CHAR_UUID)
+            print("User interrupted. Exiting...")
+            reconnect_flag = False
+            return
+            
+        if reconnect_flag:
+            # Wait before trying to reconnect
+            print(f"Will try to reconnect in 5 seconds. Press Ctrl+C to exit.")
+            try:
+                await asyncio.sleep(5)
+            except KeyboardInterrupt:
+                print("User interrupted. Exiting...")
+                reconnect_flag = False
 
 # Bluetooth scanning logic to find the LEGO remote
 async def scan_for_remote():
@@ -151,6 +203,37 @@ async def main():
         await connect_and_listen(address)
     else:
         print("Unable to find remote. Please turn it on and try again.")
+        
+        # If we didn't find it, start a loop that periodically scans until we find it
+        while reconnect_flag:
+            try:
+                print("Will try scanning again in 5 seconds. Press Ctrl+C to exit.")
+                await asyncio.sleep(5)
+                address = await scan_for_remote()
+                if address:
+                    await connect_and_listen(address)
+                    break
+            except KeyboardInterrupt:
+                print("User interrupted. Exiting...")
+                break
+
+def set_button_callback(callback):
+    """Set a callback function to handle button events"""
+    global button_callback
+    button_callback = callback
+
+# Function to check if currently connected
+def is_connected():
+    global connection_status
+    return connection_status
+
+# Function to stop reconnection attempts (can be called from outside)
+def stop_reconnecting():
+    global reconnect_flag
+    reconnect_flag = False
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Program terminated by user")
