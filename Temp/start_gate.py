@@ -12,6 +12,8 @@ from buildhat import Motor, Hat, Matrix, ColorSensor, ColorDistanceSensor, Dista
 from buildhat.exc import DeviceError
 import sys
 import os
+import remote  # Add this import for the LEGO remote control
+import asyncio
 
 
 # Configuration
@@ -1320,270 +1322,283 @@ def interactive_mode(motor):
        else:
            print("Unknown command")
 
+# Global motor reference for remote control
+global_motor = None
+
+# Define the button callback to handle remote button presses
+def handle_remote_button(port, value):
+    global global_motor
+    
+    if port == remote.PORT_LEFT and value == 0x7F:  # Left Center button pressed
+        print("Left Center button pressed - Starting Demo!")
+        if global_motor and is_motor_connected(global_motor):
+            run_demo(global_motor)
+        else:
+            print("Motor not available or disconnected!")
+
+def start_remote_control_thread(loop):
+    """Start the remote control in a separate thread."""
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(remote.main())
 
 def main():
-   """Main function to run the gate controller."""
-   clear_screen()
-   print("=== Raspberry Pi BuildHAT Swing Gate Controller ===\n")
-  
-  
-  
-   # First check for special devices like Matrix, ColorSensors, etc.
-   special_devices = detect_special_devices()
-  
-   # Test Matrix if found
-   matrix_port = None
-   for port, (device_type, _) in special_devices.items():
-       if device_type == "Matrix":
-           matrix_port = port
-           break
-  
-   if matrix_port:
-       print(f"\nLED Matrix found on port {matrix_port}!")
-       test_choice = input("Would you like to run a demo of the LED Matrix? (y/n): ").strip().lower()
-       if test_choice == 'y':
-           # At this point, the port should be free because detect_special_devices
-           # released all connections
-           test_matrix(matrix_port)
-       # Initialize the Matrix for use in the program
-       print("Initializing Matrix for use during gate operation...")
-       initialize_matrix(matrix_port)
-  
-   # Detect motors and select port
-   print("\n")  # Add a separation line
-  
-  
-  
-   # Detect motors and select port
-   connected_ports = detect_motors()
-   selected_port = select_port(connected_ports)
-  
-   print(f"\nUsing motor on port {selected_port}")
-  
-   # Connect to the motor on selected port
-   motor = connect_motor(selected_port)
-  
-   # Check if motor connection succeeded
-   if motor is None:
-       print("Failed to connect to motor. Please check connections and try again.")
-       return
-  
-   # Initialize the motor
-   if not initialize_motor(motor):
-       print("Failed to initialize motor. Checking if motor is still connected...")
-       if not is_motor_connected(motor):
-           print("Motor appears to be disconnected.")
-           print("Would you like to retry with a different port? (y/n)")
-           choice = input().strip().lower()
-           if choice == 'y':
-               main()  # Restart the program
-           return
-  
-   # Start position monitor
-   start_position_monitor(motor)
-  
-   # Main program loop
-   while True:
-       # Check if motor is still connected before showing the menu
-       if not is_motor_connected(motor):
-           print("\n⚠️ WARNING: Motor disconnected! ⚠️")
-           print("Options:")
-           print("1. Reconnect current port")
-           print("2. Select different port")
-           print("3. Exit")
-          
-           choice = input("Choice: ").strip()
-           if choice == '1':
-               # Try to reconnect
-               stop_position_monitor()
-               motor = connect_motor(selected_port)
-               if motor is None or not is_motor_connected(motor):
-                   print("Failed to reconnect. Motor may be unplugged.")
-                   continue  # Go back to the disconnection menu
-               else:
-                   start_position_monitor(motor)
-           elif choice == '2':
-               # Clean up and go to port selection
-               try:
-                   stop_position_monitor()
-                   safe_stop_motor(motor)
-               except:
-                   pass
-              
-               connected_ports = detect_motors()
-               selected_port = select_port(connected_ports)
-               motor = connect_motor(selected_port)
-              
-               if motor is None:
-                   print("Failed to connect to motor. Please check connections and try again.")
-                   continue
-              
-               if not initialize_motor(motor):
-                   print("Failed to initialize motor.")
-                   continue
-              
-               start_position_monitor(motor)
-           else:
-               print("Exiting program...")
-               stop_position_monitor()
-               break
-      
-       # Display current settings
-       print(f"\nCurrent settings:")
-       print(f"  Opening: Speed {OPEN_SPEED}%, Ramp time {OPEN_RAMP_TIME} seconds")
-       print(f"  Closing: Speed {CLOSE_SPEED}%, Ramp time {CLOSE_RAMP_TIME} seconds")
-       print(f"  Gate open wait time: {GATE_OPEN_WAIT_TIME} seconds")
-       print(f"  Holding power: {HOLD_POWER}%")
-       print(f"  Closed holding power: {CLOSED_HOLD_POWER}%")
-      
-       # Main menu
-       print("\n" + "-" * 50)
-       print("Position monitor is running in the background")
-       print("(Position updates will appear above this menu)")
-       print("-" * 50 + "\n")
+    """Main function to run the gate controller."""
+    global global_motor  # Make motor available to remote control
+    
+    clear_screen()
+    print("=== Raspberry Pi BuildHAT Swing Gate Controller ===\n")
+    
+    # First check for special devices like Matrix, ColorSensors, etc.
+    special_devices = detect_special_devices()
+    
+    # Test Matrix if found
+    matrix_port = None
+    for port, (device_type, _) in special_devices.items():
+        if device_type == "Matrix":
+            matrix_port = port
+            break
+    
+    if matrix_port:
+        print(f"\nLED Matrix found on port {matrix_port}!")
+        test_choice = input("Would you like to run a demo of the LED Matrix? (y/n): ").strip().lower()
+        if test_choice == 'y':
+            # At this point, the port should be free because detect_special_devices
+            # released all connections
+            test_matrix(matrix_port)
+        # Initialize the Matrix for use in the program
+        print("Initializing Matrix for use during gate operation...")
+        initialize_matrix(matrix_port)
+    
+    # Detect motors and select port
+    print("\n")  # Add a separation line
+    
+    # Detect motors and select port
+    connected_ports = detect_motors()
+    selected_port = select_port(connected_ports)
+    
+    print(f"\nUsing motor on port {selected_port}")
+    
+    # Connect to the motor on selected port
+    motor = connect_motor(selected_port)
+    global_motor = motor  # Save for remote access
+    
+    # Check if motor connection succeeded
+    if motor is None:
+        print("Failed to connect to motor. Please check connections and try again.")
+        return
+    
+    # Initialize the motor
+    if not initialize_motor(motor):
+        print("Failed to initialize motor. Checking if motor is still connected...")
+        if not is_motor_connected(motor):
+            print("Motor appears to be disconnected.")
+            print("Would you like to retry with a different port? (y/n)")
+            choice = input().strip().lower()
+            if choice == 'y':
+                main()  # Restart the program
+            return
+    
+    # Start position monitor
+    start_position_monitor(motor)
+    
+    # Start remote control
+    print("\nStarting remote control system...")
+    # Set the callback for button events
+    remote.set_button_callback(handle_remote_button)
+    
+    # Start the remote control in a separate thread
+    import threading
+    remote_loop = asyncio.new_event_loop()
+    remote_thread = threading.Thread(target=start_remote_control_thread, args=(remote_loop,), daemon=True)
+    remote_thread.start()
+    print("Remote control ready. Press Left Center button to run demo.")
+    
+    # Main program loop
+    while True:
+        # Check if motor is still connected before showing the menu
+        if not is_motor_connected(motor):
+            print("\n⚠️ WARNING: Motor disconnected! ⚠️")
+            print("Options:")
+            print("1. Reconnect current port")
+            print("2. Select different port")
+            print("3. Exit")
+            
+            choice = input("Choice: ").strip()
+            if choice == '1':
+                # Try to reconnect
+                stop_position_monitor()
+                motor = connect_motor(selected_port)
+                global_motor = motor  # Update global reference
+                if motor is None or not is_motor_connected(motor):
+                    print("Failed to reconnect. Motor may be unplugged.")
+                    continue  # Go back to the disconnection menu
+                else:
+                    start_position_monitor(motor)
+            elif choice == '2':
+                # Clean up and go to port selection
+                try:
+                    stop_position_monitor()
+                    safe_stop_motor(motor)
+                except:
+                    pass
+                
+                connected_ports = detect_motors()
+                selected_port = select_port(connected_ports)
+                motor = connect_motor(selected_port)
+                global_motor = motor  # Update global reference
+                
+                if motor is None:
+                    print("Failed to connect to motor. Please check connections and try again.")
+                    continue
+                
+                if not initialize_motor(motor):
+                    print("Failed to initialize motor.")
+                    continue
+                
+                # Restart position monitor
+                start_position_monitor(motor)
+            else:
+                print("Exiting program...")
+                stop_position_monitor()
+                break
+        
+        # Display current settings
+        print(f"\nCurrent settings:")
+        print(f"  Opening: Speed {OPEN_SPEED}%, Ramp time {OPEN_RAMP_TIME} seconds")
+        print(f"  Closing: Speed {CLOSE_SPEED}%, Ramp time {CLOSE_RAMP_TIME} seconds")
+        print(f"  Gate open wait time: {GATE_OPEN_WAIT_TIME} seconds")
+        print(f"  Holding power: {HOLD_POWER}%")
+        print(f"  Closed holding power: {CLOSED_HOLD_POWER}%")
+        
+        # Main menu
+        print("\n" + "-" * 50)
+        print("Position monitor is running in the background")
+        print("Remote control is listening for LEGO 88010 remote button presses")
+        print("(Position updates will appear above this menu)")
+        print("-" * 50 + "\n")
 
+        mode = input("Select mode:\n1. Run demo\n2. Interactive control\n3. Change port\n4. Reset motor position to 0\n5. Quit\nChoice: ").strip()
+        
+        if mode == '1':
+            run_demo(motor)
+        elif mode == '2':
+            # Stop the global position monitor during interactive mode
+            # since it will interfere with command input
+            stop_position_monitor()
+            interactive_mode(motor)
+            # Restart position monitor after exiting interactive mode
+            start_position_monitor(motor)
+        elif mode == '3':
+            # Clean up before changing port
+            print("Stopping motor...")
+            stop_position_monitor()
+            safe_stop_motor(motor)
+            
+            # Re-detect and select port
+            connected_ports = detect_motors()
+            selected_port = select_port(connected_ports)
+            print(f"\nUsing motor on port {selected_port}")
+            motor = connect_motor(selected_port)
+            global_motor = motor  # Update global reference
+            
+            # Check if the connection succeeded
+            if motor is None:
+                print("Failed to connect to motor on the selected port.")
+                continue
+                
+            if not initialize_motor(motor):
+                print("Failed to initialize motor.")
+                continue
+                
+            # Restart position monitor
+            start_position_monitor(motor)
+        
+        # Replace the reset position code block with this simpler approach:
+        elif mode == '4':
+            print("Resetting motor to position 0...")
+            print("Press [Enter] to stop, or use arrow keys ⬅️➡️ to change direction.")
 
-       mode = input("Select mode:\n1. Run demo\n2. Interactive control\n3. Change port\n4. Reset motor position to 0\n5. Quit\nChoice: ").strip()
-      
-       if mode == '1':
-           run_demo(motor)
-       elif mode == '2':
-           # Stop the global position monitor during interactive mode
-           # since it will interfere with command input
-           stop_position_monitor()
-           interactive_mode(motor)
-           # Restart position monitor after exiting interactive mode
-           start_position_monitor(motor)
-       elif mode == '3':
-           # Clean up before changing port
-           print("Stopping motor...")
-           stop_position_monitor()
-           safe_stop_motor(motor)
-          
-           # Re-detect and select port
-           connected_ports = detect_motors()
-           selected_port = select_port(connected_ports)
-           print(f"\nUsing motor on port {selected_port}")
-           motor = connect_motor(selected_port)
-          
-           # Check if the connection succeeded
-           if motor is None:
-               print("Failed to connect to motor on the selected port.")
-               continue
-              
-           if not initialize_motor(motor):
-               print("Failed to initialize motor.")
-               continue
-              
-           # Restart position monitor
-           start_position_monitor(motor)
-      
-       # Replace the reset position code block with this simpler approach:
-       elif mode == '4':
-           print("Resetting motor to position 0...")
-           print("Press [Enter] to stop, or use arrow keys ⬅️➡️ to change direction.")
+            if not is_motor_connected(motor):
+                print("Motor disconnected - cannot move to 0.")
+            else:
+                try:
+                    import threading
+                    import sys
+                    import tty
+                    import termios
 
+                    cancel_flag = {'stop': False}
+                    direction_flag = {'reverse': True}  # Start in reverse (-360)
 
-           if not is_motor_connected(motor):
-               print("Motor disconnected - cannot move to 0.")
-           else:
-               try:
-                   import threading
-                   import sys
-                   import tty
-                   import termios
+                    def key_listener():
+                        fd = sys.stdin.fileno()
+                        old_settings = termios.tcgetattr(fd)
+                        tty.setcbreak(fd)
+                        try:
+                            while not cancel_flag['stop']:
+                                key = sys.stdin.read(1)
+                                if key == '\n':  # Enter key
+                                    cancel_flag['stop'] = True
+                                elif key == '\x1b':  # Arrow key prefix
+                                    if sys.stdin.read(1) == '[':
+                                        arrow = sys.stdin.read(1)
+                                        if arrow in ['C', 'D']:  # Right or Left
+                                            direction_flag['reverse'] = not direction_flag['reverse']
+                                            print(f"\n↔️ Direction toggled. Now turning: {'reverse' if direction_flag['reverse'] else 'forward'}")
+                        finally:
+                            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
+                    threading.Thread(target=key_listener, daemon=True).start()
 
-                   cancel_flag = {'stop': False}
-                   direction_flag = {'reverse': True}  # Start in reverse (-360)
+                    current_pos = motor.get_position()
+                    print(f"Starting position: {current_pos} degrees")
 
+                    while abs(current_pos) > 100:
+                        if cancel_flag['stop']:
+                            print("Unwinding stopped by user.")
+                            return
 
-                   def key_listener():
-                       fd = sys.stdin.fileno()
-                       old_settings = termios.tcgetattr(fd)
-                       tty.setcbreak(fd)
-                       try:
-                           while not cancel_flag['stop']:
-                               key = sys.stdin.read(1)
-                               if key == '\n':  # Enter key
-                                   cancel_flag['stop'] = True
-                               elif key == '\x1b':  # Arrow key prefix
-                                   if sys.stdin.read(1) == '[':
-                                       arrow = sys.stdin.read(1)
-                                       if arrow in ['C', 'D']:  # Right or Left
-                                           direction_flag['reverse'] = not direction_flag['reverse']
-                                           print(f"\n↔️ Direction toggled. Now turning: {'reverse' if direction_flag['reverse'] else 'forward'}")
-                       finally:
-                           termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                        print(f"Unwinding... current: {current_pos}")
+                        step = -360 if direction_flag['reverse'] else 360
+                        motor.run_for_degrees(step, speed=80, blocking=True)
+                        time.sleep(0.3)
+                        current_pos = motor.get_position()
 
+                    print("Fine-tuning to 0 degrees...")
+                    motor.run_to_position(0, speed=50, blocking=True)
+                    time.sleep(0.3)
 
-                   threading.Thread(target=key_listener, daemon=True).start()
+                    final_pos = motor.get_position()
+                    print(f"Final position before reset: {final_pos} degrees")
 
+                    motor.set_degrees_counted(0)
+                    print("✅ Motor encoder has been reset to 0 degrees.")
 
-                   current_pos = motor.get_position()
-                   print(f"Starting position: {current_pos} degrees")
+                except Exception as e:
+                    print(f"Error during motor reset: {e}")
 
-
-                   while abs(current_pos) > 100:
-                       if cancel_flag['stop']:
-                           print("Unwinding stopped by user.")
-                           return
-
-
-                       print(f"Unwinding... current: {current_pos}")
-                       step = -360 if direction_flag['reverse'] else 360
-                       motor.run_for_degrees(step, speed=80, blocking=True)
-                       time.sleep(0.3)
-                       current_pos = motor.get_position()
-
-
-                   print("Fine-tuning to 0 degrees...")
-                   motor.run_to_position(0, speed=50, blocking=True)
-                   time.sleep(0.3)
-
-
-                   final_pos = motor.get_position()
-                   print(f"Final position before reset: {final_pos} degrees")
-
-
-                   motor.set_degrees_counted(0)
-                   print("✅ Motor encoder has been reset to 0 degrees.")
-
-
-               except Exception as e:
-                   print(f"Error during motor reset: {e}")
-
-
-       elif mode == '5':
-           print("Exiting program...")
-           stop_position_monitor()
-           break
-
-
-
-
-
-
-
-
-  
-   # Clean up
-   print("Stopping motor...")
-   safe_stop_motor(motor)
-   print("Goodbye!")
-
+        elif mode == '5':
+            print("Exiting program...")
+            stop_position_monitor()
+            break
+    
+    # Clean up
+    print("Stopping motor...")
+    safe_stop_motor(motor)
+    print("Goodbye!")
 
 if __name__ == "__main__":
-   try:
-       main()
-   except KeyboardInterrupt:
-       print("\nProgram interrupted!")
-       stop_position_monitor()
-       print("Program terminated.")
-       sys.exit(0)
-   except Exception as e:
-       print(f"\nUnexpected error: {e}")
-       stop_position_monitor()
-       print("Program terminated.")
-       sys.exit(1)
+    
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nProgram interrupted!")
+        stop_position_monitor()
+        print("Program terminated.")
+        sys.exit(0)
+    except Exception as e:
+        print(f"\nUnexpected error: {e}")
+        stop_position_monitor()
+        print("Program terminated.")
+        sys.exit(1)
 
