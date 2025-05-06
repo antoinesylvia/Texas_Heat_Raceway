@@ -66,6 +66,10 @@ def notification_handler(sender, data):
         # Call the callback if one is set
         if button_callback:
             button_callback(port, value)
+    
+    # Special handling for Left Center button - this ensures it works even with repeated presses
+    if button_callback and port == PORT_LEFT and value == 0x7F:  # Left Center button
+        button_callback(port, value)
 
 # Send command to the LEGO handset telling it:
 # "Send me notifications when button state changes on this port"
