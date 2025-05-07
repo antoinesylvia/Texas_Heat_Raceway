@@ -14,7 +14,7 @@ import sys
 import os
 import remote  # Add this import for the LEGO remote control
 import asyncio
-
+import atexit
 
 # Configuration
 
@@ -46,6 +46,8 @@ DEFAULT_SPEED = 40      # Default motor speed for other operations (0-100)
 
 # Flag to control position monitoring thread
 position_monitor_active = False
+
+DEMO_CYCLES = 1  # Number of cycles to run in the demo
 
 
 def clear_screen():
@@ -239,6 +241,12 @@ def select_port(connected_ports):
            pass  # Continue to manual selection below
        else:
            sys.exit(0)
+   elif len(connected_ports) == 1:
+       # Automatically select the only detected motor
+       port, desc, type_id = connected_ports[0]
+       print(f"\nAutomatically selected the only detected motor:")
+       print(f"Port {port}: {desc} (ID: {type_id})")
+       return port
    else:
        print("\nDetected motors:")
        for i, (port, desc, type_id) in enumerate(connected_ports, 1):
@@ -723,10 +731,13 @@ def test_matrix(matrix_port):
        matrix.clear()
        closed_pattern = [
            [(0, 0), ("red", 8)],
-           [(1, 1), ("red", 8)],
-           [(2, 2), ("red", 8)],
+           [(1, 0), ("red", 8)],
+           [(2, 0), ("red", 8)],
+           [(0, 1), ("red", 8)],
            [(0, 2), ("red", 8)],
-           [(2, 0), ("red", 8)]
+           [(0, 2), ("red", 8)],
+           [(1, 2), ("red", 8)],
+           [(2, 2), ("red", 8)]
        ]
        for coord, pixel in closed_pattern:
            matrix.set_pixel(coord, pixel)
@@ -830,17 +841,17 @@ def display_countdown_on_matrix(seconds):
            matrix_display.clear(("yellow", 3))
       
        elif seconds == 3:
-           # Top row red, others off
+           # Just the bottom row red
            matrix_display.clear()
            for x in range(3):
                matrix_display.set_pixel((x, 0), ("red", 8))
       
        elif seconds == 2:
-           # Top and middle rows red, bottom off
+           # Bottom and middle rows red
            matrix_display.clear()
            for x in range(3):
-               matrix_display.set_pixel((x, 0), ("red", 8))
                matrix_display.set_pixel((x, 1), ("red", 8))
+               matrix_display.set_pixel((x, 0), ("red", 8))
       
        elif seconds == 1:
            # All rows red
@@ -854,7 +865,6 @@ def display_countdown_on_matrix(seconds):
        # Silently handle errors - we don't want Matrix issues to stop the gate demo
        pass
 
-
 def display_gate_status_on_matrix(is_open):
    """Display the gate status on the Matrix LED."""
    global matrix_display
@@ -867,22 +877,36 @@ def display_gate_status_on_matrix(is_open):
            # Gate open indicator (green checkmark)
            matrix_display.clear()
            open_pattern = [
+               [(0, 0), ("green", 8)],
+               [(1, 0), ("green", 8)],
+               [(2, 0), ("green", 8)],
                [(0, 1), ("green", 8)],
+               [(2, 1), ("green", 8)],
+               [(0, 2), ("green", 8)],
                [(1, 2), ("green", 8)],
-               [(2, 0), ("green", 8)]
+               [(2, 2), ("green", 8)]
            ]
            for coord, pixel in open_pattern:
                matrix_display.set_pixel(coord, pixel)
        else:
            # Gate closed indicator (red X)
            matrix_display.clear()
+           
+           
            closed_pattern = [
-               [(0, 0), ("red", 8)],
-               [(1, 1), ("red", 8)],
-               [(2, 2), ("red", 8)],
-               [(0, 2), ("red", 8)],
-               [(2, 0), ("red", 8)]
-           ]
+            # Top row: Red Red Red
+            [(0, 0), ("red", 8)],
+            [(1, 0), ("red", 8)],
+            [(2, 0), ("red", 8)],
+            
+            # Left column: Red
+            [(0, 1), ("red", 8)],
+            
+            # Bottom row: Red Red Red
+            [(0, 2), ("red", 8)],
+            [(1, 2), ("red", 8)],
+            [(2, 2), ("red", 8)]
+        ]
            for coord, pixel in closed_pattern:
                matrix_display.set_pixel(coord, pixel)
   
@@ -905,6 +929,9 @@ def display_gate_status_on_matrix(is_open):
 
 def run_demo(motor):
     """Run a demonstration of the gate opening and closing."""
+    global DEMO_CYCLES
+    
+    
     if not is_motor_connected(motor):
         print("Motor disconnected - cannot run demo.")
         return False
@@ -915,8 +942,8 @@ def run_demo(motor):
     display_gate_status_on_matrix(is_open=False)
     
     # Open and close the gate three times
-    for i in range(3):
-        print(f"\nCycle {i+1}/3")
+    for i in range(DEMO_CYCLES):
+        print(f"\nCycle {i+1}/{DEMO_CYCLES}")
         
         # Ensure we start from the closed position
         if i > 0:  # Only need to do this after the first cycle
@@ -1332,7 +1359,30 @@ def handle_remote_button(port, value):
     if port == remote.PORT_LEFT and value == 0x7F:  # Left Center button pressed
         print("Left Center button pressed - Starting Demo!")
         if global_motor and is_motor_connected(global_motor):
+            # Run the demo
             run_demo(global_motor)
+            
+            # After the demo completes, force the menu to display again
+            print("\n" + "-" * 50)
+            print("Demo completed! Returning to main menu...")
+            print("-" * 50)
+            
+            # Re-display current settings
+            print(f"\nCurrent settings:")
+            print(f"  Opening: Speed {OPEN_SPEED}%, Ramp time {OPEN_RAMP_TIME} seconds")
+            print(f"  Closing: Speed {CLOSE_SPEED}%, Ramp time {CLOSE_RAMP_TIME} seconds")
+            print(f"  Gate open wait time: {GATE_OPEN_WAIT_TIME} seconds")
+            print(f"  Holding power: {HOLD_POWER}%")
+            print(f"  Closed holding power: {CLOSED_HOLD_POWER}%")
+            
+            # Re-display menu
+            print("\n" + "-" * 50)
+            print("Position monitor is running in the background")
+            print("Remote control is listening for LEGO 88010 remote button presses")
+            print("(Position updates will appear above this menu)")
+            print("-" * 50 + "\n")
+            print("Select mode:\n1. Run demo\n2. Interactive control\n3. Change port\n4. Reset motor position to 0\n5. Quit")
+            print("Waiting for input...", flush=True)
         else:
             print("Motor not available or disconnected!")
 
@@ -1359,13 +1409,28 @@ def main():
             break
     
     if matrix_port:
+        import select
+        import sys
+        
         print(f"\nLED Matrix found on port {matrix_port}!")
-        test_choice = input("Would you like to run a demo of the LED Matrix? (y/n): ").strip().lower()
-        if test_choice == 'y':
-            # At this point, the port should be free because detect_special_devices
-            # released all connections
-            test_matrix(matrix_port)
-        # Initialize the Matrix for use in the program
+        print("Press any key within 5 seconds to run a Matrix demo...")
+        
+        # Start a 5-second countdown
+        for i in range(5, 0, -1):
+            print(f"\rStarting in {i} seconds... (press any key to run demo)", end="", flush=True)
+            
+            # Check if any key was pressed during this second
+            rlist, _, _ = select.select([sys.stdin], [], [], 1)
+            if rlist:
+                # Read and discard the pressed key
+                sys.stdin.read(1)
+                print("\nRunning LED Matrix demo...")
+                test_matrix(matrix_port)
+                break
+        
+        print("\r" + " " * 60 + "\r", end="") # Clear the countdown line
+        
+        # Initialize the Matrix for use in the program regardless of demo choice
         print("Initializing Matrix for use during gate operation...")
         initialize_matrix(matrix_port)
     
@@ -1588,6 +1653,19 @@ def main():
     print("Goodbye!")
 
 if __name__ == "__main__":
+    
+    def cleanup_remote():
+        """Clean up remote controller connections when exiting"""
+        try:
+            print("Closing remote control connections...")
+            remote.stop_reconnecting()
+            # Allow time for connections to close
+            time.sleep(0.5)
+        except:
+            pass
+
+    # Register the cleanup function to run at exit
+    atexit.register(cleanup_remote)
     
     try:
         main()
