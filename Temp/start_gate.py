@@ -18,7 +18,17 @@ import atexit
 
 # Configuration
 
+# Add these global variables near the top with your other globals
+DEMO_RUNNING = False
+LAST_BUTTON_PRESS = 0
+BUTTON_DEBOUNCE_TIME = 20.0  # Seconds to wait before accepting another button press
 
+# Initialize LAST_BUTTON_PRESS at the top with your other globals
+# Change this line:
+LAST_BUTTON_PRESS = 0
+
+# To this:
+LAST_BUTTON_PRESS = time.time()  # Initialize with current time
 
 
 # Separate speed and ramp time settings for opening and closing
@@ -934,6 +944,7 @@ def run_demo(motor):
     
     if not is_motor_connected(motor):
         print("Motor disconnected - cannot run demo.")
+        DEMO_RUNNING = False
         return False
         
     print("\n--- Starting Gate Demo ---")
@@ -1352,39 +1363,92 @@ def interactive_mode(motor):
 # Global motor reference for remote control
 global_motor = None
 
-# Define the button callback to handle remote button presses
+
+
+
+
+# Then modify your handle_remote_button function:
 def handle_remote_button(port, value):
-    global global_motor
+    global global_motor, DEMO_RUNNING, LAST_BUTTON_PRESS
     
+    # Get current time once for consistency
+    current_time = time.time()
+    
+    # Use max() to ensure we never get a negative or huge number if LAST_BUTTON_PRESS wasn't set properly
+    time_since_last = current_time - LAST_BUTTON_PRESS
+    
+    # Debug info for every button event
+    print(f"DEBUG: Button event - port={port}, value=0x{value:02x}, time_since_last={time_since_last:.2f}s, DEMO_RUNNING={DEMO_RUNNING}")
+    
+    # Only handle relevant button press events
     if port == remote.PORT_LEFT and value == 0x7F:  # Left Center button pressed
-        print("Left Center button pressed - Starting Demo!")
+        print(f"Button event received: Left Center pressed, {time_since_last:.2f}s since last press")
+        
+        # Super aggressive debouncing - ignore ALL presses within BUTTON_DEBOUNCE_TIME
+        if time_since_last < BUTTON_DEBOUNCE_TIME:
+            print(f"⛔ IGNORED: Button press too soon after previous press ({time_since_last:.2f}s < {BUTTON_DEBOUNCE_TIME}s)")
+            
+            # Even when ignoring, redisplay the menu to keep the UI consistent
+            display_main_menu()
+            return
+        
+        # Check if a demo is already running
+        if DEMO_RUNNING:
+            print(f"⛔ IGNORED: Demo already running (flag={DEMO_RUNNING})")
+            return
+        
+        # If we get here, it's a valid button press - update the timestamp immediately
+        LAST_BUTTON_PRESS = current_time
+        
+        print("✅ BUTTON PRESS ACCEPTED - Starting Demo!")
+        
         if global_motor and is_motor_connected(global_motor):
-            # Run the demo
-            run_demo(global_motor)
+            print("DEBUG: Setting DEMO_RUNNING=True")
+            DEMO_RUNNING = True
             
-            # After the demo completes, force the menu to display again
-            print("\n" + "-" * 50)
-            print("Demo completed! Returning to main menu...")
-            print("-" * 50)
-            
-            # Re-display current settings
-            print(f"\nCurrent settings:")
-            print(f"  Opening: Speed {OPEN_SPEED}%, Ramp time {OPEN_RAMP_TIME} seconds")
-            print(f"  Closing: Speed {CLOSE_SPEED}%, Ramp time {CLOSE_RAMP_TIME} seconds")
-            print(f"  Gate open wait time: {GATE_OPEN_WAIT_TIME} seconds")
-            print(f"  Holding power: {HOLD_POWER}%")
-            print(f"  Closed holding power: {CLOSED_HOLD_POWER}%")
-            
-            # Re-display menu
-            print("\n" + "-" * 50)
-            print("Position monitor is running in the background")
-            print("Remote control is listening for LEGO 88010 remote button presses")
-            print("(Position updates will appear above this menu)")
-            print("-" * 50 + "\n")
-            print("Select mode:\n1. Run demo\n2. Interactive control\n3. Change port\n4. Reset motor position to 0\n5. Quit")
-            print("Waiting for input...", flush=True)
+            try:
+                # Run the demo
+                run_demo(global_motor)
+                
+                # After the demo completes, force the menu to display again
+                print("\n" + "-" * 50)
+                print("Demo completed! Returning to main menu...")
+                print("-" * 50)
+                
+                # Display settings and menu
+                display_main_menu()
+                
+            finally:
+                # Always make sure we reset the flag, even if there's an error
+                print("DEBUG: Setting DEMO_RUNNING=False")
+                DEMO_RUNNING = False
         else:
             print("Motor not available or disconnected!")
+            # Display menu when there's an error too
+            display_main_menu()
+    
+    elif port == remote.PORT_LEFT and value == 0x00:
+        # Only log button releases, don't process them
+        print("Button released (ignored)")
+
+def display_main_menu():
+    """Display current settings and main menu options."""
+    print(f"\nCurrent settings:")
+    print(f"  Opening: Speed {OPEN_SPEED}%, Ramp time {OPEN_RAMP_TIME} seconds")
+    print(f"  Closing: Speed {CLOSE_SPEED}%, Ramp time {CLOSE_RAMP_TIME} seconds")
+    print(f"  Gate open wait time: {GATE_OPEN_WAIT_TIME} seconds")
+    print(f"  Holding power: {HOLD_POWER}%")
+    print(f"  Closed holding power: {CLOSED_HOLD_POWER}%")
+    print(f"  Demo cycles: {DEMO_CYCLES}")
+    
+    # Main menu
+    print("\n" + "-" * 50)
+    print("Position monitor is running in the background")
+    print("Remote control is listening for LEGO 88010 remote button presses")
+    print("(Position updates will appear above this menu)")
+    print("-" * 50 + "\n")
+    print("Select mode:\n1. Run demo\n2. Interactive control\n3. Change port\n4. Reset motor position to 0\n5. Quit")
+    print("Waiting for input...", flush=True)
 
 def start_remote_control_thread(loop):
     """Start the remote control in a separate thread."""
@@ -1545,7 +1609,13 @@ def main():
         mode = input("Select mode:\n1. Run demo\n2. Interactive control\n3. Change port\n4. Reset motor position to 0\n5. Quit\nChoice: ").strip()
         
         if mode == '1':
-            run_demo(motor)
+            # Set flag to indicate demo is running
+            DEMO_RUNNING = True
+            try:
+                run_demo(motor)
+            finally:
+                # Always reset the flag when we're done
+                DEMO_RUNNING = False
         elif mode == '2':
             # Stop the global position monitor during interactive mode
             # since it will interfere with command input
