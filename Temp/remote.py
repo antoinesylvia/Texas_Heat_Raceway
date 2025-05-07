@@ -187,7 +187,33 @@ async def scan_for_remote():
 # Program entry point
 async def main():
     address = None
+    global reconnect_flag
 
+    # First try to disconnect any existing connections
+    print("Checking for existing connections...")
+    try:
+        # This is a simple way to force disconnect any existing connections
+        # Create a temporary client with a very short timeout
+        print("Forcing disconnect of any lingering connections...")
+        async with BleakClient("00:00:00:00:00:00", timeout=1.0) as temp_client:
+            pass
+    except:
+        pass  # Expected to fail, but forces any lingering connections to close
+    
+    # Wait briefly for connections to fully close
+    await asyncio.sleep(1)
+    
+    # Try restarting the Bluetooth service
+    try:
+        print("Resetting Bluetooth service...")
+        import subprocess
+        # Try to restart the Bluetooth service to clear any lingering connections
+        subprocess.run(["sudo", "systemctl", "restart", "bluetooth.service"], 
+                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=3)
+        await asyncio.sleep(2)  # Give it time to restart
+    except:
+        pass  # Ignore errors if service restart fails
+    
     # Try loading saved address (from previous run)
     if os.path.exists(ADDRESS_FILE):
         with open(ADDRESS_FILE, "r") as f:
@@ -199,8 +225,11 @@ async def main():
             return
         except Exception as e:
             print(f"Failed to connect with saved address: {e}")
+            
+            # Try scanning instead
+            print("Trying to scan for the remote...")
 
-    # If saved address fails, scan for remote
+    # Scan for remote
     address = await scan_for_remote()
 
     if address:
