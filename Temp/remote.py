@@ -52,7 +52,7 @@ def notification_handler(sender, data):
     # LEGO handset sends button packets like:
     # [ 0x05, 0x00, 0x45, <port>, <button_value> ]
     if len(data) != 5 or data[0] != 0x05 or data[2] != 0x45:
-        return  # Not a valid button packet → ignore
+        return  # Not a valid button packet â ignore
 
     port = data[3]
     value = data[4]
@@ -76,11 +76,11 @@ def notification_handler(sender, data):
 async def enable_port_notifications(client, port):
     print(f"Enabling notifications for port {port}...")
 
-    # This is a "Port Input Format Setup (Single)" command → 0x41
+    # This is a "Port Input Format Setup (Single)" command â 0x41
     # It configures the remote to:
     # - Port: port (0x00 = Left, 0x01 = Right)
-    # - Mode: 0x01 → "Simple Button Press Mode"
-    # - Notifications Enabled: 0x01 → notify on changes
+    # - Mode: 0x01 â "Simple Button Press Mode"
+    # - Notifications Enabled: 0x01 â notify on changes
     setup = bytearray([
         0x0A,  # Length of packet
         0x00,  # Hub ID (not used here)
@@ -117,7 +117,7 @@ async def connect_and_listen(address):
             async with BleakClient(address, address_type="random", timeout=10.0) as client:
                 # Print connection timestamp
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
-                print(f"✅ CONNECTED at {timestamp} - Remote is ready! [{address}]")
+                print(f"â CONNECTED at {timestamp} - Remote is ready! [{address}]")
                 connection_status = True
 
                 # Confirm and print discovered GATT services and characteristics
@@ -128,7 +128,7 @@ async def connect_and_listen(address):
                     for char in service.characteristics:
                         print(f"  Characteristic: {char.uuid}")
 
-                # Enable notifications for both Left and Right ports → so remote sends button state changes
+                # Enable notifications for both Left and Right ports â so remote sends button state changes
                 await enable_port_notifications(client, PORT_LEFT)
                 await enable_port_notifications(client, PORT_RIGHT)
 
@@ -143,14 +143,14 @@ async def connect_and_listen(address):
                 
                 # Connection lost - print disconnection timestamp
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
-                print(f"❌ DISCONNECTED at {timestamp} - Remote turned off or out of range")
+                print(f"â DISCONNECTED at {timestamp} - Remote turned off or out of range")
                 connection_status = False
 
         except (BleakError, asyncio.TimeoutError) as e:
             if connection_status:
                 # Only print disconnect message if we were previously connected
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
-                print(f"❌ DISCONNECTED at {timestamp} - Connection error: {e}")
+                print(f"â DISCONNECTED at {timestamp} - Connection error: {e}")
                 connection_status = False
             else:
                 print(f"Connection error: {e}")
