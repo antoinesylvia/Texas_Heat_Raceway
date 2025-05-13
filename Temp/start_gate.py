@@ -30,11 +30,15 @@ LAST_BUTTON_PRESS = 0
 # To this:
 LAST_BUTTON_PRESS = time.time()  # Initialize with current time
 
+#Transition to close to open for turning off CLOSED_HOLD_POWER
+GATE_TRANSITION = 0.1
+
+TARGET_OPEN_TRAVEL = -140  # The desired angular travel from closed to open
 
 # Separate speed and ramp time settings for opening and closing
 OPEN_SPEED = 100        # Motor speed when opening (0-100)
 CLOSE_SPEED = 15      # Motor speed when closing (0-100)
-OPEN_RAMP_TIME = 0.2  # Time to ramp up/down speed when opening (seconds)
+OPEN_RAMP_TIME = 0.4  # Time to ramp up/down speed when opening (seconds)
 CLOSE_RAMP_TIME = 5.0   # Time to ramp up/down speed when closing (seconds)
 
 
@@ -77,9 +81,9 @@ def check_buildhat_connection():
       
        # Check if voltage is in a good range (7.5V-9V is ideal)
        if voltage < 7.0:
-           print(f"⚠️ WARNING: Low input voltage ({voltage:.2f}V). Recommended: 7.5V-9V")
+           print(f"â ï¸ WARNING: Low input voltage ({voltage:.2f}V). Recommended: 7.5V-9V")
        elif voltage > 9.5:
-           print(f"⚠️ WARNING: High input voltage ({voltage:.2f}V). Recommended: 7.5V-9V")
+           print(f"â ï¸ WARNING: High input voltage ({voltage:.2f}V). Recommended: 7.5V-9V")
       
        # Set LEDs based on voltage
        hat.set_leds(color='voltage')
@@ -451,11 +455,11 @@ def initialize_motor(motor):
        print(f"Initial position after setup: {current_pos} degrees")
       
        # Fine-tune to exactly 0 degrees if needed
-       # Using a wider tolerance of ±3 degrees as requested
+       # Using a wider tolerance of Â±3 degrees as requested
        calibrated_home_position = current_pos  # Start with current position as default
       
        if abs(current_pos - 0) > 3:  # If we're more than 3 degrees off
-           print(f"Fine-tuning home position to within ±3 degrees of zero...")
+           print(f"Fine-tuning home position to within Â±3 degrees of zero...")
           
            # Use a gentle approach with lower speed for precision
            calibration_speed = 30  # Low speed for precise positioning
@@ -468,7 +472,7 @@ def initialize_motor(motor):
            final_pos = motor.get_position()
            calibrated_home_position = final_pos  # Update to calibrated position
           
-           # If still off by more than ±3 degrees, try one more time with higher power
+           # If still off by more than Â±3 degrees, try one more time with higher power
            if abs(final_pos - 0) > 3:
                print(f"More precise calibration needed (currently at {final_pos})...")
                motor.run_to_position(0, 50, blocking=True)
@@ -477,11 +481,11 @@ def initialize_motor(motor):
                calibrated_home_position = final_pos  # Update to final calibrated position
           
            if abs(final_pos) <= 3:
-               print(f"Successfully calibrated to home position: {final_pos} degrees (within ±3° tolerance)")
+               print(f"Successfully calibrated to home position: {final_pos} degrees (within Â±3Â° tolerance)")
            else:
                print(f"Note: Could not reach exact zero position. Current: {final_pos} degrees")
        else:
-           print(f"Motor already at acceptable home position: {current_pos} degrees (within ±3° tolerance)")
+           print(f"Motor already at acceptable home position: {current_pos} degrees (within Â±3Â° tolerance)")
       
        # ===== NEW CODE: Set dynamic gate angles based on calibrated home position =====
        # Update the global gate angle settings based on the calibrated home position
@@ -489,7 +493,7 @@ def initialize_motor(motor):
       
        # Calculate open angle relative to the calibrated home position
        # If the original GATE_OPEN_ANGLE was -140, make it relative to the calibrated home
-       target_open_travel = -140  # The desired angular travel from closed to open
+       target_open_travel = TARGET_OPEN_TRAVEL  # The desired angular travel from closed to open
        GATE_OPEN_ANGLE = GATE_CLOSED_ANGLE + target_open_travel
       
        print(f"Dynamic gate angles set based on calibration:")
@@ -508,7 +512,7 @@ def initialize_motor(motor):
           
            print("Gate secured in closed position.")
       
-       print("Motor initialized to closed position (within ±3° of 0 degrees)")
+       print("Motor initialized to closed position (within Â±3Â° of 0 degrees)")
        return True
    except DeviceError:
        print("Motor disconnected during initialization.")
@@ -1048,7 +1052,7 @@ def run_demo(motor):
 
         # Stop holding power RIGHT BEFORE opening the gate - minimizing the gap
         motor.stop()
-        time.sleep(0.15)  # Absolute minimum pause - just enough for motor control to reset
+        time.sleep(GATE_TRANSITION)  # Absolute minimum pause - just enough for motor control to reset
         
         # NOW open the gate
         if not open_gate(motor):
@@ -1101,12 +1105,12 @@ def run_demo(motor):
         # After closing, verify position but minimize adjustments
         
         current_pos = motor.get_position()
-        print(f"Verifying closed position (currently at {current_pos}°)...")
+        print(f"Verifying closed position (currently at {current_pos}Â°)...")
         
         # Only attempt calibration if position is significantly off 
         # This is a more aggressive threshold to avoid unnecessary adjustments
         if abs(current_pos - GATE_CLOSED_ANGLE) > 5:  # Only calibrate if more than 5 degrees off
-            print(f"Position significantly off target! Needs adjustment from {current_pos}° to {GATE_CLOSED_ANGLE}°")
+            print(f"Position significantly off target! Needs adjustment from {current_pos}Â° to {GATE_CLOSED_ANGLE}Â°")
             
             # Temporarily stop holding power for accurate calibration
             print("Releasing holding power for repositioning...")
@@ -1121,7 +1125,7 @@ def run_demo(motor):
                 
                 # Check final position
                 final_pos = motor.get_position()
-                print(f"Repositioning complete - now at {final_pos}° (target: {GATE_CLOSED_ANGLE}°)")
+                print(f"Repositioning complete - now at {final_pos}Â° (target: {GATE_CLOSED_ANGLE}Â°)")
             
             except Exception as e:
                 print(f"\nError during repositioning: {e}")
@@ -1140,7 +1144,7 @@ def run_demo(motor):
         else:
             # Even if position is good, verify that holding power is still active
             # This extra check ensures holding power is maintained
-            print(f"Gate position within acceptable range ({current_pos}°)")
+            print(f"Gate position within acceptable range ({current_pos}Â°)")
             
             # Strengthen holding power to ensure it doesn't drift
             print(f"Reinforcing holding power ({CLOSED_HOLD_POWER}%) to prevent drift...")
@@ -1386,7 +1390,7 @@ def handle_remote_button(port, value):
         
         # Super aggressive debouncing - ignore ALL presses within BUTTON_DEBOUNCE_TIME
         if time_since_last < BUTTON_DEBOUNCE_TIME:
-            print(f"⛔ IGNORED: Button press too soon after previous press ({time_since_last:.2f}s < {BUTTON_DEBOUNCE_TIME}s)")
+            print(f"â IGNORED: Button press too soon after previous press ({time_since_last:.2f}s < {BUTTON_DEBOUNCE_TIME}s)")
             
             # Even when ignoring, redisplay the menu to keep the UI consistent
             display_main_menu()
@@ -1394,13 +1398,13 @@ def handle_remote_button(port, value):
         
         # Check if a demo is already running
         if DEMO_RUNNING:
-            print(f"⛔ IGNORED: Demo already running (flag={DEMO_RUNNING})")
+            print(f"â IGNORED: Demo already running (flag={DEMO_RUNNING})")
             return
         
         # If we get here, it's a valid button press - update the timestamp immediately
         LAST_BUTTON_PRESS = current_time
         
-        print("✅ BUTTON PRESS ACCEPTED - Starting Demo!")
+        print("â BUTTON PRESS ACCEPTED - Starting Demo!")
         
         if global_motor and is_motor_connected(global_motor):
             print("DEBUG: Setting DEMO_RUNNING=True")
@@ -1546,7 +1550,7 @@ def main():
     while True:
         # Check if motor is still connected before showing the menu
         if not is_motor_connected(motor):
-            print("\n⚠️ WARNING: Motor disconnected! ⚠️")
+            print("\nâ ï¸ WARNING: Motor disconnected! â ï¸")
             print("Options:")
             print("1. Reconnect current port")
             print("2. Select different port")
@@ -1651,7 +1655,7 @@ def main():
         # Replace the reset position code block with this simpler approach:
         elif mode == '4':
             print("Resetting motor to position 0...")
-            print("Press [Enter] to stop, or use arrow keys ⬅️➡️ to change direction.")
+            print("Press [Enter] to stop, or use arrow keys â¬ï¸â¡ï¸ to change direction.")
 
             if not is_motor_connected(motor):
                 print("Motor disconnected - cannot move to 0.")
@@ -1679,7 +1683,7 @@ def main():
                                         arrow = sys.stdin.read(1)
                                         if arrow in ['C', 'D']:  # Right or Left
                                             direction_flag['reverse'] = not direction_flag['reverse']
-                                            print(f"\n↔️ Direction toggled. Now turning: {'reverse' if direction_flag['reverse'] else 'forward'}")
+                                            print(f"\nâï¸ Direction toggled. Now turning: {'reverse' if direction_flag['reverse'] else 'forward'}")
                         finally:
                             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
@@ -1707,7 +1711,7 @@ def main():
                     print(f"Final position before reset: {final_pos} degrees")
 
                     motor.set_degrees_counted(0)
-                    print("✅ Motor encoder has been reset to 0 degrees.")
+                    print("â Motor encoder has been reset to 0 degrees.")
 
                 except Exception as e:
                     print(f"Error during motor reset: {e}")
