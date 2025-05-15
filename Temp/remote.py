@@ -20,6 +20,7 @@ button_callback = None
 last_button_states = {PORT_LEFT: None, PORT_RIGHT: None}
 reconnect_flag = True  # Flag to control reconnection loop
 connection_status = False  # Track if we're currently connected
+bluetooth_already_reset = False
 
 # Decode button signal values into human readable button events
 def parse_button(port, value):
@@ -186,33 +187,21 @@ async def scan_for_remote():
 
 # Program entry point
 async def main():
+    global reconnect_flag, bluetooth_already_reset
     address = None
-    global reconnect_flag
-
-    # First try to disconnect any existing connections
-    print("Checking for existing connections...")
-    try:
-        # This is a simple way to force disconnect any existing connections
-        # Create a temporary client with a very short timeout
-        print("Forcing disconnect of any lingering connections...")
-        async with BleakClient("00:00:00:00:00:00", timeout=1.0) as temp_client:
-            pass
-    except:
-        pass  # Expected to fail, but forces any lingering connections to close
     
-    # Wait briefly for connections to fully close
-    await asyncio.sleep(1)
-    
-    # Try restarting the Bluetooth service
-    try:
-        print("Resetting Bluetooth service...")
-        import subprocess
-        # Try to restart the Bluetooth service to clear any lingering connections
-        subprocess.run(["sudo", "systemctl", "restart", "bluetooth.service"], 
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=3)
-        await asyncio.sleep(2)  # Give it time to restart
-    except:
-        pass  # Ignore errors if service restart fails
+    # Only reset once at the very beginning
+    if not bluetooth_already_reset:
+        print("Initial Bluetooth reset to clear any zombie connections...")
+        try:
+            import subprocess
+            subprocess.run(["sudo", "systemctl", "restart", "bluetooth.service"], 
+                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=3)
+            await asyncio.sleep(2)
+            bluetooth_already_reset = True
+            print("Bluetooth reset complete")
+        except Exception as e:
+            print(f"Warning: Could not reset Bluetooth: {e}")
     
     # Try loading saved address (from previous run)
     if os.path.exists(ADDRESS_FILE):
