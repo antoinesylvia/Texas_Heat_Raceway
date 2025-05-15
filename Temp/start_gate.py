@@ -12,12 +12,23 @@ from buildhat import Motor, Hat, Matrix, ColorSensor, ColorDistanceSensor, Dista
 from buildhat.exc import DeviceError
 import sys
 import os
-import pygame
+
 import random 
 import remote  # Add this import for the LEGO remote control
 import asyncio
 import atexit
 import yaml
+import pygame
+
+# Initialize pygame mixer for sound playback
+try:
+    pygame.mixer.init()
+    print("Sound system initialized")
+except Exception as e:
+    print(f"Warning: Could not initialize sound system: {e}")
+
+
+
 
 # Configuration
 
@@ -41,18 +52,18 @@ def refresh_config():
     
     # Update globals with config values (with defaults if key missing)
     globals().update({
-        "BUTTON_DEBOUNCE_TIME": cfg.get("button_debounce_time", 20.0),
-        "TARGET_OPEN_TRAVEL": cfg.get("target_open_travel", -140),
-        "GATE_TRANSITION": cfg.get("gate_transition", 0.1),
-        "OPEN_SPEED": cfg.get("open_speed", 100),
-        "CLOSE_SPEED": cfg.get("close_speed", 15),
-        "OPEN_RAMP_TIME": cfg.get("open_ramp_time", 0.4),
-        "CLOSE_RAMP_TIME": cfg.get("close_ramp_time", 5.0),
-        "GATE_OPEN_WAIT_TIME": cfg.get("gate_open_wait_time", 5.0),
-        "HOLD_POWER": cfg.get("hold_power", 100),
-        "CLOSED_HOLD_POWER": cfg.get("closed_hold_power", 100),
-        "DEFAULT_SPEED": cfg.get("default_speed", 40),
-        "DEMO_CYCLES": cfg.get("demo_cycles", 1),
+        "BUTTON_DEBOUNCE_TIME": cfg.get("button_debounce_time"),
+        "TARGET_OPEN_TRAVEL": cfg.get("target_open_travel"),
+        "GATE_TRANSITION": cfg.get("gate_transition"),
+        "OPEN_SPEED": cfg.get("open_speed"),
+        "CLOSE_SPEED": cfg.get("close_speed"),
+        "OPEN_RAMP_TIME": cfg.get("open_ramp_time"),
+        "CLOSE_RAMP_TIME": cfg.get("close_ramp_time"),
+        "GATE_OPEN_WAIT_TIME": cfg.get("gate_open_wait_time"),
+        "HOLD_POWER": cfg.get("hold_power"),
+        "CLOSED_HOLD_POWER": cfg.get("closed_hold_power"),
+        "DEFAULT_SPEED": cfg.get("default_speed"),
+        "DEMO_CYCLES": cfg.get("demo_cycles"),
     })
     print("Configuration reloaded from file")
 
@@ -898,7 +909,7 @@ def play_countdown_sound(seconds):
         3: "Audio/Countdown/z3.mp3",
         2: "Audio/Countdown/z2.mp3",
         1: "Audio/Countdown/z1.mp3",
-        0: "Audio/Countdown/zGo.mp3"
+        0: "Audio/Countdown/zGO.mp3"
     }
     
     if seconds in audio_files and os.path.exists(audio_files[seconds]):
@@ -1082,18 +1093,27 @@ def run_demo(motor):
         wait_end = wait_start + GATE_OPEN_WAIT_TIME
         
         # Display yellow pulsing until 3 seconds remaining
+        last_sound_time = 0  # Track when we last played the sound
+        sound_interval = 3.0  # Only play sound every 3 seconds
+
         while time.time() < wait_end - 3:
+            current_time = time.time()
             remaining = int(wait_end - time.time())
             print(f"\rGate opens in {remaining} seconds...", end="", flush=True)
             
+            # Only play sound at certain intervals, not on every loop iteration
+            if current_time - last_sound_time >= sound_interval:
+                play_prelaunch_sound(0)
+                last_sound_time = current_time
+            
             # Yellow pulse on matrix
             if matrix_display:
-                play_prelaunch_sound(0)
                 # Pulse between dim and bright yellow
                 matrix_display.clear(("yellow", 3))
                 time.sleep(0.2)
                 matrix_display.clear(("yellow", 6))
                 time.sleep(0.2)
+                
         
         # 3 seconds remaining - top row red
         if time.time() < wait_end:
@@ -1143,9 +1163,10 @@ def run_demo(motor):
                 time.sleep(0.1)
         
         # Time to open - GO!
+        play_countdown_sound(0)
         print("\rGate opening now!                      ")
         if matrix_display:
-            play_countdown_sound(0)
+            
             matrix_display.clear(("green", 10))  # All LEDs bright green
             
             
@@ -1405,7 +1426,7 @@ def interactive_mode(motor):
                 speed = int(cmd.split()[1])
                 if 0 <= speed <= 100:
                     # Note: This changes the global but won't persist unless saved to config.yaml
-                    global OPEN_SPEED
+                    
                     OPEN_SPEED = speed
                     print(f"Opening speed set to {OPEN_SPEED}% (in memory only)")
                     print("To make this permanent, edit config.yaml")
@@ -1418,7 +1439,7 @@ def interactive_mode(motor):
             try:
                 speed = int(cmd.split()[1])
                 if 0 <= speed <= 100:
-                    global CLOSE_SPEED
+                    
                     CLOSE_SPEED = speed
                     print(f"Closing speed set to {CLOSE_SPEED}% (in memory only)")
                     print("To make this permanent, edit config.yaml")
@@ -1431,7 +1452,7 @@ def interactive_mode(motor):
             try:
                 time_val = float(cmd.split()[1])
                 if 0 <= time_val <= 10:
-                    global OPEN_RAMP_TIME
+                    
                     OPEN_RAMP_TIME = time_val
                     print(f"Opening ramp time set to {OPEN_RAMP_TIME} seconds (in memory only)")
                     print("To make this permanent, edit config.yaml")
@@ -1444,7 +1465,7 @@ def interactive_mode(motor):
             try:
                 time_val = float(cmd.split()[1])
                 if 0 <= time_val <= 10:
-                    global CLOSE_RAMP_TIME
+                    
                     CLOSE_RAMP_TIME = time_val
                     print(f"Closing ramp time set to {CLOSE_RAMP_TIME} seconds (in memory only)")
                     print("To make this permanent, edit config.yaml")
@@ -1457,7 +1478,7 @@ def interactive_mode(motor):
             try:
                 time_val = float(cmd.split()[1])
                 if 0 <= time_val <= 60:
-                    global GATE_OPEN_WAIT_TIME
+                    
                     GATE_OPEN_WAIT_TIME = time_val
                     print(f"Gate open wait time set to {GATE_OPEN_WAIT_TIME} seconds (in memory only)")
                     print("To make this permanent, edit config.yaml")
@@ -1470,7 +1491,7 @@ def interactive_mode(motor):
             try:
                 power = int(cmd.split()[1])
                 if 0 <= power <= 100:
-                    global CLOSED_HOLD_POWER
+                    
                     CLOSED_HOLD_POWER = power
                     print(f"Closed holding power set to {CLOSED_HOLD_POWER}% (in memory only)")
                     print("To make this permanent, edit config.yaml")
@@ -1483,7 +1504,7 @@ def interactive_mode(motor):
             try:
                 power = int(cmd.split()[1])
                 if 0 <= power <= 100:
-                    global HOLD_POWER
+                    
                     HOLD_POWER = power
                     print(f"Holding power set to {HOLD_POWER}% (in memory only)")
                     print("To make this permanent, edit config.yaml")
