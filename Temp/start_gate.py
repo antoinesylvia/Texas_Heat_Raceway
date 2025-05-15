@@ -12,57 +12,64 @@ from buildhat import Motor, Hat, Matrix, ColorSensor, ColorDistanceSensor, Dista
 from buildhat.exc import DeviceError
 import sys
 import os
+import pygame
+import random 
 import remote  # Add this import for the LEGO remote control
 import asyncio
 import atexit
+import yaml
 
 # Configuration
 
-# Add these global variables near the top with your other globals
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config_start.yaml")
+
+def load_config():
+    """Load configuration from YAML file"""
+    try:
+        with open(CONFIG_PATH) as f:
+            return yaml.safe_load(f)
+    except FileNotFoundError:
+        print(f"Config file not found at {CONFIG_PATH}, using defaults")
+        return {}
+    except Exception as e:
+        print(f"Error loading config: {e}, using defaults")
+        return {}
+
+def refresh_config():
+    """Refresh global variables from config file"""
+    cfg = load_config()
+    
+    # Update globals with config values (with defaults if key missing)
+    globals().update({
+        "BUTTON_DEBOUNCE_TIME": cfg.get("button_debounce_time", 20.0),
+        "TARGET_OPEN_TRAVEL": cfg.get("target_open_travel", -140),
+        "GATE_TRANSITION": cfg.get("gate_transition", 0.1),
+        "OPEN_SPEED": cfg.get("open_speed", 100),
+        "CLOSE_SPEED": cfg.get("close_speed", 15),
+        "OPEN_RAMP_TIME": cfg.get("open_ramp_time", 0.4),
+        "CLOSE_RAMP_TIME": cfg.get("close_ramp_time", 5.0),
+        "GATE_OPEN_WAIT_TIME": cfg.get("gate_open_wait_time", 5.0),
+        "HOLD_POWER": cfg.get("hold_power", 100),
+        "CLOSED_HOLD_POWER": cfg.get("closed_hold_power", 100),
+        "DEFAULT_SPEED": cfg.get("default_speed", 40),
+        "DEMO_CYCLES": cfg.get("demo_cycles", 1),
+    })
+    print("Configuration reloaded from file")
+
+# Load config once at startup
+refresh_config()
+
+# Runtime variables (not from config)
 DEMO_RUNNING = False
-LAST_BUTTON_PRESS = 0
-BUTTON_DEBOUNCE_TIME = 20.0  # Seconds to wait before accepting another button press
-
-# Initialize LAST_BUTTON_PRESS at the top with your other globals
-# Change this line:
-LAST_BUTTON_PRESS = 0
-
-# To this:
-LAST_BUTTON_PRESS = time.time()  # Initialize with current time
-
-#Transition to close to open for turning off CLOSED_HOLD_POWER
-GATE_TRANSITION = 0.1
-
-TARGET_OPEN_TRAVEL = -140  # The desired angular travel from closed to open
-
-# Separate speed and ramp time settings for opening and closing
-OPEN_SPEED = 100        # Motor speed when opening (0-100)
-CLOSE_SPEED = 15      # Motor speed when closing (0-100)
-OPEN_RAMP_TIME = 0.4  # Time to ramp up/down speed when opening (seconds)
-CLOSE_RAMP_TIME = 5.0   # Time to ramp up/down speed when closing (seconds)
-
-
-# Wait time for race gate
-GATE_OPEN_WAIT_TIME = 5.0  # Time gate stays open before closing (seconds)
-
-
-# Motor holding power setting
-HOLD_POWER = 100  # Power level (0-100) to maintain position when gate is open
-
-
-# Power level (0-100) to maintain position when gate is closed
-CLOSED_HOLD_POWER = 100
-
-
-# Default speed for other operations
-DEFAULT_SPEED = 40      # Default motor speed for other operations (0-100)
-
-
-# Flag to control position monitoring thread
+LAST_BUTTON_PRESS = time.time()
 position_monitor_active = False
 
-DEMO_CYCLES = 1  # Number of cycles to run in the demo
+# Dynamic gate position variables (calculated at runtime)
+GATE_CLOSED_ANGLE = None
+GATE_OPEN_ANGLE = None
 
+#track the last played prelaunch audio
+last_ready_audio = None
 
 def clear_screen():
    """Clear the terminal screen."""
@@ -459,7 +466,7 @@ def initialize_motor(motor):
        calibrated_home_position = current_pos  # Start with current position as default
       
        if abs(current_pos - 0) > 3:  # If we're more than 3 degrees off
-           print(f"Fine-tuning home position to within Â±3 degrees of zero...")
+           print(f"Fine-tuning home position to within ±3 degrees of zero...")
           
            # Use a gentle approach with lower speed for precision
            calibration_speed = 30  # Low speed for precise positioning
@@ -551,48 +558,40 @@ def ramp_speed(motor, target_speed, ramp_time=1.0):
 
 
 def open_gate(motor):
-   """Open the gate to GATE_OPEN_ANGLE degrees."""
-   if not is_motor_connected(motor):
-       print("Motor disconnected - cannot open gate.")
-       return False
-      
-   try:
-       print(f"Opening gate to {GATE_OPEN_ANGLE} degrees...")
-      
-       # Stop any holding power that might be applied
-       motor.stop()
-       time.sleep(0.1)  # Brief pause
-      
-       # Important: Force direct method that worked previously
-       motor.set_default_speed(OPEN_SPEED)
-      
-       # Direct approach without ramping logic
-       # This is a simpler approach that avoids the issue
-       if GATE_OPEN_ANGLE < 0:
-           # For negative angles like -90
-           motor.run_to_position(GATE_OPEN_ANGLE, OPEN_SPEED, blocking=True)
-       else:
-           # For positive angles (unlikely in your case)
-           motor.run_to_position(GATE_OPEN_ANGLE, OPEN_SPEED, blocking=True)
-      
-       # Get current time for timestamp
-       current_time = time.strftime("%H:%M:%S", time.localtime())
-      
-       # Verify position reached
-       if is_motor_connected(motor):
-           current_pos = motor.get_position()
-           if abs(current_pos - GATE_OPEN_ANGLE) > 5:
-               print(f"Warning: Gate stopped at {current_pos}, target was {GATE_OPEN_ANGLE}")
-          
-       # Print gate opened message with timestamp
-       print(f"Gate opened at {current_time}!")
-       return True
-   except DeviceError:
-       print("Motor disconnected while opening gate.")
-       return False
-   except Exception as e:
-       print(f"Error opening gate: {e}")
-       return False
+    """Open the gate to GATE_OPEN_ANGLE degrees."""
+    if not is_motor_connected(motor):
+        print("Motor disconnected - cannot open gate.")
+        return False
+    
+    try:
+        print(f"Opening gate to {GATE_OPEN_ANGLE} degrees...")
+        
+        # Stop any holding power that might be applied
+        motor.stop()
+        time.sleep(GATE_TRANSITION)  # Use configured transition time
+        
+        # Set motor speed and open to target angle
+        motor.set_default_speed(OPEN_SPEED)
+        motor.run_to_position(GATE_OPEN_ANGLE, OPEN_SPEED, blocking=True)
+        
+        # Get current time for timestamp
+        current_time = time.strftime("%H:%M:%S", time.localtime())
+        
+        # Verify position reached
+        if is_motor_connected(motor):
+            current_pos = motor.get_position()
+            if abs(current_pos - GATE_OPEN_ANGLE) > 5:
+                print(f"Warning: Gate stopped at {current_pos}, target was {GATE_OPEN_ANGLE}")
+        
+        # Print gate opened message with timestamp
+        print(f"Gate opened at {current_time}!")
+        return True
+    except DeviceError:
+        print("Motor disconnected while opening gate.")
+        return False
+    except Exception as e:
+        print(f"Error opening gate: {e}")
+        return False
 
 
 def close_gate(motor):
@@ -837,47 +836,139 @@ def initialize_matrix(port):
        matrix_display = None
        return False
 
+def play_random_ready_audio():
+    """Play a random audio file from the readyfolder, avoiding repeats."""
+    global last_prelaunch_audio
+    
+    ready_folder = "Audio/Ready"
+    
+    if not os.path.exists(ready_folder):
+        print(f"ready folder not found: {ready_folder}")
+        return
+    
+    # Get all mp3 files in the ready folder
+    ready_files = [f for f in os.listdir(ready_folder) 
+                     if f.endswith(('.mp3', '.wav'))]
+    
+    if not ready_files:
+        print("No mp3 or wav files found in ready folder")
+        return
+    
+    # If there's only one file, we have no choice but to play it
+    if len(ready_files) == 1:
+        selected_file = ready_files[0]
+    else:
+        # Remove the last played file from the selection pool
+        available_files = ready_files.copy()
+        if last_ready_audio and last_ready_audio in available_files:
+            available_files.remove(last_ready_audio)
+        
+        # Randomly select a file
+        selected_file = random.choice(available_files)
+    
+    # Update the last played file
+    last_ready_audio = selected_file
+    
+    # Play the selected file
+    audio_path = os.path.join(ready_folder, selected_file)
+    try:
+        pygame.mixer.Sound(audio_path).play()
+        print(f"Playing ready audio: {selected_file}")  # Debug info
+    except Exception as e:
+        print(f"Error playing ready audio: {e}")
+
+
+def play_prelaunch_sound(seconds):
+    """Play the appropriate prelaunch sound."""
+    audio_files = {
+        0: "Audio/Prelaunch/launch_decision.wav"
+    }
+    
+    if seconds in audio_files and os.path.exists(audio_files[seconds]):
+        try:
+            pygame.mixer.Sound(audio_files[seconds]).play()
+        except Exception as e:
+            print(f"Error playing prelaunch sound: {e}")
+
+
+
+def play_countdown_sound(seconds):
+    """Play the appropriate countdown sound."""
+    audio_files = {
+        3: "Audio/Countdown/z3.mp3",
+        2: "Audio/Countdown/z2.mp3",
+        1: "Audio/Countdown/z1.mp3",
+        0: "Audio/Countdown/zGo.mp3"
+    }
+    
+    if seconds in audio_files and os.path.exists(audio_files[seconds]):
+        try:
+            pygame.mixer.Sound(audio_files[seconds]).play()
+        except Exception as e:
+            print(f"Error playing countdown sound: {e}")
+
+
+def play_crowd_sound(seconds):
+    """Play the appropriate crowd sound."""
+    audio_files = {
+        0: "Audio/Crowd/zCheering_V1.mp3"
+    }
+    
+    if seconds in audio_files and os.path.exists(audio_files[seconds]):
+        try:
+            pygame.mixer.Sound(audio_files[seconds]).play()
+        except Exception as e:
+            print(f"Error playing crowd sound: {e}")
+
+
 
 def display_countdown_on_matrix(seconds):
-   """Display countdown visualization on the Matrix LED."""
-   global matrix_display
-  
-   if not matrix_display:
-       return  # No matrix available
-  
-   try:
-       if seconds > 3:
-           # Pulse yellow while waiting
-           matrix_display.clear(("yellow", 3))
-           time.sleep(0.2)
-           matrix_display.clear(("yellow", 6))
-           time.sleep(0.2)
-           matrix_display.clear(("yellow", 3))
-      
-       elif seconds == 3:
-           # Just the bottom row red
-           matrix_display.clear()
-           for x in range(3):
-               matrix_display.set_pixel((x, 0), ("red", 8))
-      
-       elif seconds == 2:
-           # Bottom and middle rows red
-           matrix_display.clear()
-           for x in range(3):
-               matrix_display.set_pixel((x, 1), ("red", 8))
-               matrix_display.set_pixel((x, 0), ("red", 8))
-      
-       elif seconds == 1:
-           # All rows red
-           matrix_display.clear(("red", 8))
-      
-       elif seconds == 0:
-           # All green for GO!
-           matrix_display.clear(("green", 10))
-  
-   except Exception as e:
-       # Silently handle errors - we don't want Matrix issues to stop the gate demo
-       pass
+    """Display countdown visualization on the Matrix LED and play audio."""
+    global matrix_display
+    
+    if not matrix_display:
+        return  # No matrix available
+    
+    try:
+        if seconds > 3:
+            # Pulse yellow while waiting
+            matrix_display.clear(("yellow", 3))
+            time.sleep(0.2)
+            matrix_display.clear(("yellow", 6))
+            time.sleep(0.2)
+            matrix_display.clear(("yellow", 3))
+            # Play prelaunch audio
+            play_prelaunch_sound(0)
+            
+        
+        elif seconds == 3:
+            # Just the bottom row red
+            matrix_display.clear()
+            for x in range(3):
+                matrix_display.set_pixel((x, 0), ("red", 8))
+            play_countdown_sound(3)
+        
+        elif seconds == 2:
+            # Bottom and middle rows red
+            matrix_display.clear()
+            for x in range(3):
+                matrix_display.set_pixel((x, 1), ("red", 8))
+                matrix_display.set_pixel((x, 0), ("red", 8))
+            play_countdown_sound(2)
+        
+        elif seconds == 1:
+            # All rows red
+            matrix_display.clear(("red", 8))
+            play_countdown_sound(1)
+        
+        elif seconds == 0:
+            # All green for GO!
+            matrix_display.clear(("green", 10))
+            play_countdown_sound(0)
+    
+    except Exception as e:
+        # Silently handle errors - we don't want Matrix issues to stop the gate demo
+        pass
 
 def display_gate_status_on_matrix(is_open):
    """Display the gate status on the Matrix LED."""
@@ -997,6 +1088,7 @@ def run_demo(motor):
             
             # Yellow pulse on matrix
             if matrix_display:
+                play_prelaunch_sound(0)
                 # Pulse between dim and bright yellow
                 matrix_display.clear(("yellow", 3))
                 time.sleep(0.2)
@@ -1009,7 +1101,9 @@ def run_demo(motor):
             print(f"\rGate opens in {remaining} seconds...", end="", flush=True)
             
             if matrix_display:
+                play_countdown_sound(3)
                 matrix_display.clear()  # Clear first
+                
                 for x in range(3):
                     matrix_display.set_pixel((x, 0), ("red", 8))
             
@@ -1023,7 +1117,9 @@ def run_demo(motor):
             print(f"\rGate opens in {remaining} seconds...", end="", flush=True)
             
             if matrix_display:
+                play_countdown_sound(2)
                 matrix_display.clear()  # Clear first
+                
                 for x in range(3):
                     matrix_display.set_pixel((x, 0), ("red", 8))
                     matrix_display.set_pixel((x, 1), ("red", 8))
@@ -1038,7 +1134,9 @@ def run_demo(motor):
             print(f"\rGate opens in {remaining} second...", end="", flush=True)
             
             if matrix_display:
+                play_countdown_sound(1)
                 matrix_display.clear(("red", 8))  # All LEDs red
+                
             
             # Wait until time to open
             while time.time() < wait_end:
@@ -1047,15 +1145,22 @@ def run_demo(motor):
         # Time to open - GO!
         print("\rGate opening now!                      ")
         if matrix_display:
+            play_countdown_sound(0)
             matrix_display.clear(("green", 10))  # All LEDs bright green
+            
+            
             time.sleep(0.5)  # Brief pause to show the GO signal
 
         # Stop holding power RIGHT BEFORE opening the gate - minimizing the gap
-        motor.stop()
-        time.sleep(GATE_TRANSITION)  # Absolute minimum pause - just enough for motor control to reset
+        #motor.stop()
+        #time.sleep(GATE_TRANSITION)  # Absolute minimum pause - just enough for motor control to reset
+        
+        # Play crowd sound as gate starts opening
+        play_crowd_sound(0)
         
         # NOW open the gate
         if not open_gate(motor):
+            
             print("Demo aborted due to motor disconnection.")
             return False
             
@@ -1162,207 +1267,233 @@ def run_demo(motor):
 
 
 def interactive_mode(motor):
-   """Run an interactive mode where the user can control the gate."""
-   # Declare all globals at the beginning of the function
-   global OPEN_SPEED, CLOSE_SPEED, OPEN_RAMP_TIME, CLOSE_RAMP_TIME, GATE_OPEN_WAIT_TIME, HOLD_POWER, CLOSED_HOLD_POWER
-  
-   print("\n--- Interactive Gate Control ---")
-   print("Commands:")
-   print("  o - Open gate")
-   print("  c - Close gate")
-   print("  p XX - Move to position XX degrees")
-   print("  so XX - Set opening speed to XX%")
-   print("  sc XX - Set closing speed to XX%")
-   print("  ro XX - Set opening ramp time to XX seconds")
-   print("  rc XX - Set closing ramp time to XX seconds")
-   print("  w XX - Set gate open wait time to XX seconds")
-   print("  h XX - Set holding power to XX% (0-100)")
-   print("  ch XX - Set closed holding power to XX% (0-100)")
-   print("  m - Toggle position monitor (shows current position every second)")
-   print("  r - Reconnect motor (if disconnected)")
-   print("  q - Quit")
-  
-   # Start position monitor by default
-   monitor_active = False
-  
-   while True:
-       cmd = input("\nEnter command: ").strip().lower()
-      
-       if cmd == 'q':
-           print("Exiting...")
-           if monitor_active:
-               stop_position_monitor()
-           break
-       elif cmd == 'm':
-           if monitor_active:
-               stop_position_monitor()
-               monitor_active = False
-           else:
-               if start_position_monitor(motor):
-                   monitor_active = True
-       elif cmd == 'r':
-           # Try to reconnect the motor
-           if monitor_active:
-               stop_position_monitor()
-               monitor_active = False
-          
-           print("Attempting to reconnect motor...")
-           try:
-               port = motor.get_port()
-               safe_stop_motor(motor)
-               motor = connect_motor(port)
-              
-               if motor is None or not is_motor_connected(motor):
-                   print("Failed to reconnect. Motor may be unplugged.")
-               else:
-                   print("Motor reconnected successfully!")
-                   if monitor_active:
-                       start_position_monitor(motor)
-           except Exception as e:
-               print(f"Error reconnecting: {e}")
-       elif cmd == 'o':
-           if not is_motor_connected(motor):
-               print("Motor disconnected. Use 'r' to reconnect.")
-           else:
-               open_gate(motor)
-       elif cmd == 'c':
-           if not is_motor_connected(motor):
-               print("Motor disconnected. Use 'r' to reconnect.")
-           else:
-               close_gate(motor)
-       elif cmd.startswith('p '):
-           if not is_motor_connected(motor):
-               print("Motor disconnected. Use 'r' to reconnect.")
-           else:
-               try:
-                   pos = int(cmd.split()[1])
-                   if -360 <= pos <= 360:  # Updated range to allow negative positions
-                       print(f"Moving to position {pos} degrees...")
-                      
-                       # Get current position to determine direction
-                       current_pos = motor.get_position()
-                      
-                       # Use ramping for smoother start
-                       if pos > current_pos:  # Moving forward
-                           ramp_speed(motor, DEFAULT_SPEED, OPEN_RAMP_TIME)
-                       else:  # Moving backward
-                           ramp_speed(motor, -DEFAULT_SPEED, CLOSE_RAMP_TIME)
-                          
-                       motor.run_to_position(pos, DEFAULT_SPEED, blocking=True)
-                       print(f"Reached position {pos} degrees")
-                   else:
-                       print("Position must be between -360 and 360 degrees")
-               except (ValueError, IndexError):
-                   print("Invalid position. Use format: p XX")
-               except DeviceError:
-                   print("Motor disconnected during movement. Use 'r' to reconnect.")
-       elif cmd.startswith('so '):
-           if not is_motor_connected(motor):
-               print("Motor disconnected. Use 'r' to reconnect.")
-           else:
-               try:
-                   speed = int(cmd.split()[1])
-                   if 0 <= speed <= 100:
-                       OPEN_SPEED = speed
-                       print(f"Opening speed set to {OPEN_SPEED}%")
-                   else:
-                       print("Speed must be between 0 and 100%")
-               except (ValueError, IndexError):
-                   print("Invalid speed. Use format: so XX")
-               except DeviceError:
-                   print("Motor disconnected. Use 'r' to reconnect.")
-       elif cmd.startswith('sc '):
-           if not is_motor_connected(motor):
-               print("Motor disconnected. Use 'r' to reconnect.")
-           else:
-               try:
-                   speed = int(cmd.split()[1])
-                   if 0 <= speed <= 100:
-                       CLOSE_SPEED = speed
-                       print(f"Closing speed set to {CLOSE_SPEED}%")
-                   else:
-                       print("Speed must be between 0 and 100%")
-               except (ValueError, IndexError):
-                   print("Invalid speed. Use format: sc XX")
-               except DeviceError:
-                   print("Motor disconnected. Use 'r' to reconnect.")
-       elif cmd.startswith('ro '):
-           if not is_motor_connected(motor):
-               print("Motor disconnected. Use 'r' to reconnect.")
-           else:
-               try:
-                   time_val = float(cmd.split()[1])
-                   if 0 <= time_val <= 10:
-                       OPEN_RAMP_TIME = time_val
-                       print(f"Opening ramp time set to {OPEN_RAMP_TIME} seconds")
-                   else:
-                       print("Ramp time must be between 0 and 10 seconds")
-               except (ValueError, IndexError):
-                   print("Invalid time value. Use format: ro XX")
-               except DeviceError:
-                   print("Motor disconnected. Use 'r' to reconnect.")
-       elif cmd.startswith('rc '):
-           if not is_motor_connected(motor):
-               print("Motor disconnected. Use 'r' to reconnect.")
-           else:
-               try:
-                   time_val = float(cmd.split()[1])
-                   if 0 <= time_val <= 10:
-                       CLOSE_RAMP_TIME = time_val
-                       print(f"Closing ramp time set to {CLOSE_RAMP_TIME} seconds")
-                   else:
-                       print("Ramp time must be between 0 and 10 seconds")
-               except (ValueError, IndexError):
-                   print("Invalid time value. Use format: rc XX")
-               except DeviceError:
-                   print("Motor disconnected. Use 'r' to reconnect.")
-       elif cmd.startswith('w '):
-           if not is_motor_connected(motor):
-               print("Motor disconnected. Use 'r' to reconnect.")
-           else:
-               try:
-                   time_val = float(cmd.split()[1])
-                   if 0 <= time_val <= 60:
-                       GATE_OPEN_WAIT_TIME = time_val
-                       print(f"Gate open wait time set to {GATE_OPEN_WAIT_TIME} seconds")
-                   else:
-                       print("Wait time must be between 0 and 60 seconds")
-               except (ValueError, IndexError):
-                   print("Invalid time value. Use format: w XX")
-               except DeviceError:
-                   print("Motor disconnected. Use 'r' to reconnect.")
-       elif cmd.startswith('ch '):
-           if not is_motor_connected(motor):
-               print("Motor disconnected. Use 'r' to reconnect.")
-           else:
-               try:
-                   power = int(cmd.split()[1])
-                   if 0 <= power <= 100:
-                       CLOSED_HOLD_POWER = power
-                       print(f"Closed holding power set to {CLOSED_HOLD_POWER}%")
-                   else:
-                       print("Holding power must be between 0 and 100%")
-               except (ValueError, IndexError):
-                   print("Invalid power value. Use format: ch XX")
-               except DeviceError:
-                   print("Motor disconnected. Use 'r' to reconnect.")
-       elif cmd.startswith('h '):
-           if not is_motor_connected(motor):
-               print("Motor disconnected. Use 'r' to reconnect.")
-           else:
-               try:
-                   power = int(cmd.split()[1])
-                   if 0 <= power <= 100:
-                       HOLD_POWER = power
-                       print(f"Holding power set to {HOLD_POWER}%")
-                   else:
-                       print("Holding power must be between 0 and 100%")
-               except (ValueError, IndexError):
-                   print("Invalid power value. Use format: h XX")
-               except DeviceError:
-                   print("Motor disconnected. Use 'r' to reconnect.")
-       else:
-           print("Unknown command")
+    """Run an interactive mode where the user can control the gate."""
+    
+    global OPEN_SPEED, CLOSE_SPEED, OPEN_RAMP_TIME, CLOSE_RAMP_TIME, GATE_OPEN_WAIT_TIME
+    global HOLD_POWER, CLOSED_HOLD_POWER, DEFAULT_SPEED, DEMO_CYCLES
+    global BUTTON_DEBOUNCE_TIME, TARGET_OPEN_TRAVEL, GATE_TRANSITION
+    
+    print("\n--- Interactive Gate Control ---")
+    print("Commands:")
+    print("  o - Open gate")
+    print("  c - Close gate")
+    print("  p XX - Move to position XX degrees")
+    print("  so XX - Set opening speed to XX%")
+    print("  sc XX - Set closing speed to XX%")
+    print("  ro XX - Set opening ramp time to XX seconds")
+    print("  rc XX - Set closing ramp time to XX seconds")
+    print("  w XX - Set gate open wait time to XX seconds")
+    print("  h XX - Set holding power to XX% (0-100)")
+    print("  ch XX - Set closed holding power to XX% (0-100)")
+    print("  m - Toggle position monitor (shows current position every second)")
+    print("  r - Reconnect motor (if disconnected)")
+    print("  reload - Reload configuration from config_start.yaml")
+    print("  config - Show current configuration values")
+    print("  q - Quit")
+    
+    # Start position monitor by default
+    monitor_active = False
+    
+    while True:
+        cmd = input("\nEnter command: ").strip().lower()
+        
+        if cmd == 'q':
+            print("Exiting interactive mode...")
+            if monitor_active:
+                stop_position_monitor()
+            break
+            
+        elif cmd == 'reload':
+            refresh_config()
+            print("Configuration reloaded from config_start.yaml")
+            print(f"Current values:")
+            print(f"  OPEN_SPEED: {OPEN_SPEED}")
+            print(f"  CLOSE_SPEED: {CLOSE_SPEED}")
+            print(f"  OPEN_RAMP_TIME: {OPEN_RAMP_TIME}")
+            print(f"  CLOSE_RAMP_TIME: {CLOSE_RAMP_TIME}")
+            print(f"  GATE_OPEN_WAIT_TIME: {GATE_OPEN_WAIT_TIME}")
+            print(f"  HOLD_POWER: {HOLD_POWER}")
+            print(f"  CLOSED_HOLD_POWER: {CLOSED_HOLD_POWER}")
+            print(f"  DEFAULT_SPEED: {DEFAULT_SPEED}")
+            print(f"  DEMO_CYCLES: {DEMO_CYCLES}")
+            
+        elif cmd == 'config':
+            print("\nCurrent configuration values:")
+            print(f"  BUTTON_DEBOUNCE_TIME: {BUTTON_DEBOUNCE_TIME}s")
+            print(f"  TARGET_OPEN_TRAVEL: {TARGET_OPEN_TRAVEL}°")
+            print(f"  GATE_TRANSITION: {GATE_TRANSITION}s")
+            print(f"  OPEN_SPEED: {OPEN_SPEED}%")
+            print(f"  CLOSE_SPEED: {CLOSE_SPEED}%")
+            print(f"  OPEN_RAMP_TIME: {OPEN_RAMP_TIME}s")
+            print(f"  CLOSE_RAMP_TIME: {CLOSE_RAMP_TIME}s")
+            print(f"  GATE_OPEN_WAIT_TIME: {GATE_OPEN_WAIT_TIME}s")
+            print(f"  HOLD_POWER: {HOLD_POWER}%")
+            print(f"  CLOSED_HOLD_POWER: {CLOSED_HOLD_POWER}%")
+            print(f"  DEFAULT_SPEED: {DEFAULT_SPEED}%")
+            print(f"  DEMO_CYCLES: {DEMO_CYCLES}")
+            
+        elif cmd == 'm':
+            if monitor_active:
+                stop_position_monitor()
+                monitor_active = False
+            else:
+                if start_position_monitor(motor):
+                    monitor_active = True
+                    
+        elif cmd == 'r':
+            # Try to reconnect the motor
+            if monitor_active:
+                stop_position_monitor()
+                monitor_active = False
+            
+            print("Attempting to reconnect motor...")
+            try:
+                port = motor.get_port()
+                safe_stop_motor(motor)
+                motor = connect_motor(port)
+                
+                if motor is None or not is_motor_connected(motor):
+                    print("Failed to reconnect. Motor may be unplugged.")
+                else:
+                    print("Motor reconnected successfully!")
+                    if monitor_active:
+                        start_position_monitor(motor)
+            except Exception as e:
+                print(f"Error reconnecting: {e}")
+                
+        elif cmd == 'o':
+            if not is_motor_connected(motor):
+                print("Motor disconnected. Use 'r' to reconnect.")
+            else:
+                open_gate(motor)
+                
+        elif cmd == 'c':
+            if not is_motor_connected(motor):
+                print("Motor disconnected. Use 'r' to reconnect.")
+            else:
+                close_gate(motor)
+                
+        elif cmd.startswith('p '):
+            if not is_motor_connected(motor):
+                print("Motor disconnected. Use 'r' to reconnect.")
+            else:
+                try:
+                    pos = int(cmd.split()[1])
+                    if -360 <= pos <= 360:
+                        print(f"Moving to position {pos} degrees...")
+                        
+                        # Get current position to determine direction
+                        current_pos = motor.get_position()
+                        
+                        # Use ramping for smoother start
+                        if pos > current_pos:  # Moving forward
+                            ramp_speed(motor, DEFAULT_SPEED, OPEN_RAMP_TIME)
+                        else:  # Moving backward
+                            ramp_speed(motor, -DEFAULT_SPEED, CLOSE_RAMP_TIME)
+                            
+                        motor.run_to_position(pos, DEFAULT_SPEED, blocking=True)
+                        print(f"Reached position {pos} degrees")
+                    else:
+                        print("Position must be between -360 and 360 degrees")
+                except (ValueError, IndexError):
+                    print("Invalid position. Use format: p XX")
+                except DeviceError:
+                    print("Motor disconnected during movement. Use 'r' to reconnect.")
+                    
+        elif cmd.startswith('so '):
+            try:
+                speed = int(cmd.split()[1])
+                if 0 <= speed <= 100:
+                    # Note: This changes the global but won't persist unless saved to config.yaml
+                    global OPEN_SPEED
+                    OPEN_SPEED = speed
+                    print(f"Opening speed set to {OPEN_SPEED}% (in memory only)")
+                    print("To make this permanent, edit config.yaml")
+                else:
+                    print("Speed must be between 0 and 100%")
+            except (ValueError, IndexError):
+                print("Invalid speed. Use format: so XX")
+                
+        elif cmd.startswith('sc '):
+            try:
+                speed = int(cmd.split()[1])
+                if 0 <= speed <= 100:
+                    global CLOSE_SPEED
+                    CLOSE_SPEED = speed
+                    print(f"Closing speed set to {CLOSE_SPEED}% (in memory only)")
+                    print("To make this permanent, edit config.yaml")
+                else:
+                    print("Speed must be between 0 and 100%")
+            except (ValueError, IndexError):
+                print("Invalid speed. Use format: sc XX")
+                
+        elif cmd.startswith('ro '):
+            try:
+                time_val = float(cmd.split()[1])
+                if 0 <= time_val <= 10:
+                    global OPEN_RAMP_TIME
+                    OPEN_RAMP_TIME = time_val
+                    print(f"Opening ramp time set to {OPEN_RAMP_TIME} seconds (in memory only)")
+                    print("To make this permanent, edit config.yaml")
+                else:
+                    print("Ramp time must be between 0 and 10 seconds")
+            except (ValueError, IndexError):
+                print("Invalid time value. Use format: ro XX")
+                
+        elif cmd.startswith('rc '):
+            try:
+                time_val = float(cmd.split()[1])
+                if 0 <= time_val <= 10:
+                    global CLOSE_RAMP_TIME
+                    CLOSE_RAMP_TIME = time_val
+                    print(f"Closing ramp time set to {CLOSE_RAMP_TIME} seconds (in memory only)")
+                    print("To make this permanent, edit config.yaml")
+                else:
+                    print("Ramp time must be between 0 and 10 seconds")
+            except (ValueError, IndexError):
+                print("Invalid time value. Use format: rc XX")
+                
+        elif cmd.startswith('w '):
+            try:
+                time_val = float(cmd.split()[1])
+                if 0 <= time_val <= 60:
+                    global GATE_OPEN_WAIT_TIME
+                    GATE_OPEN_WAIT_TIME = time_val
+                    print(f"Gate open wait time set to {GATE_OPEN_WAIT_TIME} seconds (in memory only)")
+                    print("To make this permanent, edit config.yaml")
+                else:
+                    print("Wait time must be between 0 and 60 seconds")
+            except (ValueError, IndexError):
+                print("Invalid time value. Use format: w XX")
+                
+        elif cmd.startswith('ch '):
+            try:
+                power = int(cmd.split()[1])
+                if 0 <= power <= 100:
+                    global CLOSED_HOLD_POWER
+                    CLOSED_HOLD_POWER = power
+                    print(f"Closed holding power set to {CLOSED_HOLD_POWER}% (in memory only)")
+                    print("To make this permanent, edit config.yaml")
+                else:
+                    print("Holding power must be between 0 and 100%")
+            except (ValueError, IndexError):
+                print("Invalid power value. Use format: ch XX")
+                
+        elif cmd.startswith('h '):
+            try:
+                power = int(cmd.split()[1])
+                if 0 <= power <= 100:
+                    global HOLD_POWER
+                    HOLD_POWER = power
+                    print(f"Holding power set to {HOLD_POWER}% (in memory only)")
+                    print("To make this permanent, edit config.yaml")
+                else:
+                    print("Holding power must be between 0 and 100%")
+            except (ValueError, IndexError):
+                print("Invalid power value. Use format: h XX")
+                
+        else:
+            print("Unknown command. Type 'q' to quit or see the command list above.")
 
 # Global motor reference for remote control
 global_motor = None
@@ -1388,9 +1519,12 @@ def handle_remote_button(port, value):
     if port == remote.PORT_LEFT and value == 0x7F:  # Left Center button pressed
         print(f"Button event received: Left Center pressed, {time_since_last:.2f}s since last press")
         
+        # Load fresh config for this button press
+        refresh_config()
+        
         # Super aggressive debouncing - ignore ALL presses within BUTTON_DEBOUNCE_TIME
         if time_since_last < BUTTON_DEBOUNCE_TIME:
-            print(f"â IGNORED: Button press too soon after previous press ({time_since_last:.2f}s < {BUTTON_DEBOUNCE_TIME}s)")
+            print(f"IGNORED: Button press too soon after previous press ({time_since_last:.2f}s < {BUTTON_DEBOUNCE_TIME}s)")
             
             # Even when ignoring, redisplay the menu to keep the UI consistent
             display_main_menu()
@@ -1398,20 +1532,20 @@ def handle_remote_button(port, value):
         
         # Check if a demo is already running
         if DEMO_RUNNING:
-            print(f"â IGNORED: Demo already running (flag={DEMO_RUNNING})")
+            print(f"IGNORED: Demo already running (flag={DEMO_RUNNING})")
             return
         
         # If we get here, it's a valid button press - update the timestamp immediately
         LAST_BUTTON_PRESS = current_time
         
-        print("â BUTTON PRESS ACCEPTED - Starting Demo!")
+        print("BUTTON PRESS ACCEPTED - Starting Demo!")
         
         if global_motor and is_motor_connected(global_motor):
             print("DEBUG: Setting DEMO_RUNNING=True")
             DEMO_RUNNING = True
             
             try:
-                # Run the demo
+                # Run the demo (will use the config we just loaded)
                 run_demo(global_motor)
                 
                 # After the demo completes, force the menu to display again
@@ -1433,6 +1567,7 @@ def handle_remote_button(port, value):
     
     elif port == remote.PORT_LEFT and value == 0x00:
         # Only log button releases, don't process them
+        
         print("Button released (ignored)")
 
 def display_main_menu():
@@ -1548,9 +1683,10 @@ def main():
     
     # Main program loop
     while True:
+        refresh_config()
         # Check if motor is still connected before showing the menu
         if not is_motor_connected(motor):
-            print("\nâ ï¸ WARNING: Motor disconnected! â ï¸")
+            print("\nWARNING: Motor disconnected!")
             print("Options:")
             print("1. Reconnect current port")
             print("2. Select different port")
@@ -1711,7 +1847,7 @@ def main():
                     print(f"Final position before reset: {final_pos} degrees")
 
                     motor.set_degrees_counted(0)
-                    print("â Motor encoder has been reset to 0 degrees.")
+                    print("Motor encoder has been reset to 0 degrees.")
 
                 except Exception as e:
                     print(f"Error during motor reset: {e}")
@@ -1727,12 +1863,19 @@ def main():
     print("Goodbye!")
 
 if __name__ == "__main__":
-    
     def cleanup_remote():
         """Clean up remote controller connections when exiting"""
         try:
             print("Closing remote control connections...")
             remote.stop_reconnecting()
+            
+            # Force disconnect the BLE client if it exists
+            if hasattr(remote, 'client') and remote.client:
+                try:
+                    asyncio.run(remote.client.disconnect())
+                except:
+                    pass
+            
             # Allow time for connections to close
             time.sleep(0.5)
         except:
@@ -1751,6 +1894,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\nUnexpected error: {e}")
         stop_position_monitor()
-        print("Program terminated.")
+        print(f"Program terminated.")
         sys.exit(1)
+
 
