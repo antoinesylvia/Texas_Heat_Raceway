@@ -1,0 +1,28 @@
+# Start Gate Configuration
+# Edit these values and they'll be reloaded before each demo
+
+# Button debounce time in seconds
+button_debounce_time: 20.0
+
+# Gate movement parameters
+target_open_travel: -140  # degrees from closed to open
+gate_transition: 0.1      # seconds to wait when switching power states
+
+# Motor speeds (0-100%)
+open_speed: 100
+close_speed: 15
+default_speed: 40
+
+# Ramp times in seconds
+open_ramp_time: 0.4
+close_ramp_time: 5.0
+
+# Gate timing
+gate_open_wait_time: 5.0  # seconds before auto-closing
+
+# Holding power levels (0-100%)
+hold_power: 100        # when gate is open
+closed_hold_power: 100 # when gate is closed
+
+# Demo settings
+demo_cycles: 1  # number of open/close cycles per demo
