@@ -2,7 +2,7 @@
 # These values and they'll be reloaded before each demo
 
 # Button debounce time in seconds
-button_debounce_time: 20.0
+button_debounce_time: 30.0
 
 # Gate movement parameters
 target_open_travel: -165  # degrees from closed to open
