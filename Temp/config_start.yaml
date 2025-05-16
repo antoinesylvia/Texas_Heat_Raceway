@@ -1,7 +1,7 @@
 # Start Gate Configuration
 # These values and they'll be reloaded before each demo
 
-# Button debounce time in seconds
+# Button debounce time in seconds, this is for the Lego remote
 button_debounce_time: 30.0
 
 # Gate movement parameters
