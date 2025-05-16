@@ -876,9 +876,12 @@ def initialize_matrix(port):
        matrix_display = None
        return False
 
+# Add this global variable near your other globals
+ready_audio_played = []  # Tracks all played files in the current cycle
+
 def play_random_ready_audio():
-    """Play a random audio file from the readyfolder, avoiding repeats."""
-    global last_prelaunch_audio
+    """Play a random audio file from the ready folder, cycling through all files before repeating."""
+    global last_ready_audio, ready_audio_played
     
     ready_folder = "Audio/Ready"
     
@@ -894,26 +897,26 @@ def play_random_ready_audio():
         print("No mp3 or wav files found in ready folder")
         return
     
-    # If there's only one file, we have no choice but to play it
-    if len(ready_files) == 1:
-        selected_file = ready_files[0]
-    else:
-        # Remove the last played file from the selection pool
-        available_files = ready_files.copy()
-        if last_ready_audio and last_ready_audio in available_files:
-            available_files.remove(last_ready_audio)
-        
-        # Randomly select a file
-        selected_file = random.choice(available_files)
+    # If we've played all files, reset the tracking list
+    if len(ready_audio_played) >= len(ready_files):
+        print("All audio files have been played, resetting cycle")
+        ready_audio_played = []
     
-    # Update the last played file
+    # Remove all previously played files from the selection pool
+    available_files = [f for f in ready_files if f not in ready_audio_played]
+    
+    # Randomly select a file
+    selected_file = random.choice(available_files)
+    
+    # Update tracking
     last_ready_audio = selected_file
+    ready_audio_played.append(selected_file)
     
     # Play the selected file
     audio_path = os.path.join(ready_folder, selected_file)
     try:
         pygame.mixer.Sound(audio_path).play()
-        print(f"Playing ready audio: {selected_file}")  # Debug info
+        print(f"Playing ready audio: {selected_file} ({len(ready_audio_played)}/{len(ready_files)} in cycle)")
     except Exception as e:
         print(f"Error playing ready audio: {e}")
 
@@ -1059,7 +1062,143 @@ def display_gate_status_on_matrix(is_open):
        # Silently handle errors
        pass
 
+def test_components():
+    """
+    Dynamically check if all discovered components are still connected.
+    Returns a dictionary with the status of each component.
+    """
+    global global_motor, matrix_display
+    
+    # Initialize results dictionary
+    components = {}
+    
+    # Check motor connection if we have one
+    if global_motor is not None:
+        try:
+            # Try to get position as a connection test
+            position = global_motor.get_position()
+            components['motor'] = {
+                'status': 'OK',
+                'port': global_motor.port,
+                'type': global_motor.description if hasattr(global_motor, 'description') else 'Unknown',
+                'position': position
+            }
+        except Exception as e:
+            components['motor'] = {
+                'status': 'DISCONNECTED',
+                'port': global_motor.port if hasattr(global_motor, 'port') else 'Unknown',
+                'error': str(e)
+            }
+    else:
+        components['motor'] = {'status': 'NOT_INITIALIZED'}
+    
+    # Check Matrix display if we have one
+    if matrix_display is not None:
+        try:
+            # Test matrix by quickly setting and clearing a pixel
+            original_state = None
+            try:
+                # Get the state of the first pixel (difficult with buildhat API)
+                pass
+            except:
+                pass
+                
+            # Set a test pixel
+            matrix_display.set_pixel((0, 0), ("blue", 1))
+            time.sleep(0.05)
+            # Clear it immediately
+            matrix_display.clear()
+            
+            # If we got here without errors, the matrix is working
+            components['led_matrix'] = {
+                'status': 'OK',
+                'port': getattr(matrix_display, 'port', 'Unknown'),
+                'type': getattr(matrix_display, 'description', '3x3 Color Light Matrix')
+            }
+        except Exception as e:
+            components['led_matrix'] = {
+                'status': 'DISCONNECTED',
+                'port': getattr(matrix_display, 'port', 'Unknown'),
+                'error': str(e)
+            }
+    else:
+        components['led_matrix'] = {'status': 'NOT_INITIALIZED'}
+        
+    # Check all BuildHAT ports for any changes
+    try:
+        hat = Hat()
+        devices = hat.get()
+        components['buildhat'] = {
+            'status': 'OK', 
+            'voltage': hat.get_vin(),
+            'connected_ports': []
+        }
+        
+        # List all currently connected devices by port
+        for port, device in devices.items():
+            if device:  # If not None, device is connected
+                components['buildhat']['connected_ports'].append({
+                    'port': port,
+                    'device': str(device)
+                })
+                
+    except Exception as e:
+        components['buildhat'] = {
+            'status': 'ERROR',
+            'error': str(e)
+        }
+    
+    return components
 
+def print_component_status():
+    """
+    Check all components and print their status in a readable format.
+    Can be called after demo completion or any time status update is needed.
+    """
+    print("\n" + "-" * 80)
+    print("=== COMPONENT STATUS CHECK ===")
+    
+    status = test_components()
+    
+    # Print BuildHAT status
+    if 'buildhat' in status:
+        buildhat = status['buildhat']
+        if buildhat['status'] == 'OK':
+            print(f"✅ BuildHAT: Connected (Voltage: {buildhat['voltage']:.2f}V)")
+            if buildhat['connected_ports']:
+                print("   Connected devices:")
+                for device in buildhat['connected_ports']:
+                    print(f"   - Port {device['port']}: {device['device']}")
+            else:
+                print("   No devices currently detected on any port")
+        else:
+            print(f"❌ BuildHAT: Error ({buildhat.get('error', 'Unknown error')})")
+    
+    # Print Motor status
+    if 'motor' in status:
+        motor = status['motor']
+        if motor['status'] == 'OK':
+            print(f"✅ Motor: Connected on Port {motor['port']} ({motor['type']})")
+            print(f"   Current position: {motor['position']} degrees")
+        elif motor['status'] == 'DISCONNECTED':
+            print(f"❌ Motor: Disconnected from Port {motor.get('port', '?')} ({motor.get('error', 'Unknown error')})")
+        else:
+            print("❓ Motor: Not initialized")
+    
+    # Print Matrix status
+    if 'led_matrix' in status:
+        matrix = status['led_matrix']
+        if matrix['status'] == 'OK':
+            print(f"✅ LED Matrix: Connected on Port {matrix['port']} ({matrix['type']})")
+        elif matrix['status'] == 'DISCONNECTED':
+            print(f"❌ LED Matrix: Disconnected from Port {matrix.get('port', '?')} ({matrix.get('error', 'Unknown error')})")
+        else:
+            print("❓ LED Matrix: Not initialized")
+    
+    print("-" * 80)
+    
+    # Return the full status object in case it's needed elsewhere
+    return status
 
 
 
@@ -1076,13 +1215,47 @@ def run_demo(motor):
     """Run a demonstration of the gate opening and closing."""
     global DEMO_CYCLES
     
+    # First check all components to ensure they're connected
+    print("\nVerifying all components before starting demo...")
+    status = test_components()
     
-    if not is_motor_connected(motor):
-        print("Motor disconnected - cannot run demo.")
+    # Show confirmation of component status
+    if status['motor']['status'] == 'OK':
+        print(f"✅ Motor: Connected and ready on Port {status['motor']['port']}")
+    else:
+        print(f"❌ Motor issue detected!")
+    
+    if 'led_matrix' in status and status['led_matrix']['status'] == 'OK':
+        print(f"✅ LED Matrix: Connected and ready")
+    elif 'led_matrix' in status:
+        print(f"⚠️ LED Matrix: Not responding (visual feedback limited)")
+    
+    # Check if BuildHAT is operating within proper voltage range
+    if 'buildhat' in status and status['buildhat']['status'] == 'OK':
+        voltage = status['buildhat']['voltage']
+        if 7.0 <= voltage <= 9.5:
+            print(f"✅ BuildHAT: Operating at optimal voltage ({voltage:.2f}V)")
+        else:
+            print(f"⚠️ BuildHAT: Voltage outside optimal range ({voltage:.2f}V)")
+    
+    # Check motor status specifically
+    if status['motor']['status'] != 'OK':
+        print(f"Motor disconnected or error - cannot run demo.")
+        print(f"Motor status: {status['motor'].get('error', 'Unknown error')}")
         DEMO_RUNNING = False
         return False
-        
-    print("\n--- Starting Gate Demo ---")
+    
+    
+
+    print("-" * 40)
+    print("All critical components verified")
+    play_random_ready_audio()
+    time.sleep(5)  # Give time for audio to play
+    print("Starting Gate Demo")
+    print("-" * 40)
+    
+    
+    
 
     # Display closed status on Matrix if available
     display_gate_status_on_matrix(is_open=False)
