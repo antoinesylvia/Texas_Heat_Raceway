@@ -876,12 +876,97 @@ def initialize_matrix(port):
        matrix_display = None
        return False
 
+# Add this global variable with your other globals
+equalizer_running = False  # Flag to control the equalizer animation
+
+def display_equalizer_on_matrix(duration=None):
+    """
+    Display an audio equalizer animation on the matrix.
+    If duration is specified, it will auto-stop after that many seconds.
+    Otherwise, it runs until stop_equalizer() is called.
+    """
+    global matrix_display, equalizer_running
+    
+    if not matrix_display:
+        print("Matrix display not available")
+        return
+    
+    # Set the flag that indicates the equalizer is running
+    equalizer_running = True
+    
+    if duration:
+        print(f"Displaying equalizer animation for {duration} seconds...")
+    else:
+        print(f"Starting equalizer animation (will run until stopped)...")
+    
+    start_time = time.time()
+    
+    # Define our colors for the different levels (lowest to highest)
+    colors = ["green", "yellow", "orange", "red"]
+    
+    try:
+        # Run animation until stopped or duration expires
+        while equalizer_running:
+            # Check if duration has expired (if specified)
+            if duration and (time.time() - start_time > duration):
+                break
+                
+            # Clear the matrix first
+            matrix_display.clear()
+            
+            # Generate a random pattern for the three columns
+            for column in range(3):
+                # Randomly determine the height of this column (0-3)
+                height = random.randint(0, 3)
+                
+                # Draw the column from bottom to top
+                for row in range(height):
+                    # Bottom row is 2, middle is 1, top is 0
+                    y = 2 - row
+                    
+                    # Pick a color based on height
+                    color = colors[min(row, len(colors)-1)]
+                    
+                    # Higher rows get higher brightness
+                    brightness = 5 + row * 2
+                    
+                    # Set the pixel
+                    matrix_display.set_pixel((column, y), (color, brightness))
+            
+            # Wait a short time before next frame
+            time.sleep(0.15)
+        
+        # Clear the matrix when done
+        matrix_display.clear()
+        print("Equalizer animation stopped")
+        
+    except Exception as e:
+        print(f"Error during equalizer animation: {e}")
+        matrix_display.clear()  # Make sure to clear on error
+    finally:
+        # Always reset the flag when done
+        equalizer_running = False
+
+def stop_equalizer():
+    """Stop the equalizer animation."""
+    global equalizer_running
+    equalizer_running = False
+    print("Stopping equalizer animation...")
+
+
+
+
+
+
+
 # Add this global variable near your other globals
 ready_audio_played = []  # Tracks all played files in the current cycle
 
+
+
 def play_random_ready_audio():
     """Play a random audio file from the ready folder, cycling through all files before repeating."""
-    global last_ready_audio, ready_audio_played
+    global last_ready_audio, ready_audio_played, equalizer_running
     
     ready_folder = "Audio/Ready"
     
@@ -912,14 +997,71 @@ def play_random_ready_audio():
     last_ready_audio = selected_file
     ready_audio_played.append(selected_file)
     
+    # Set the equalizer running flag before playing audio
+    equalizer_running = True
+    
     # Play the selected file
     audio_path = os.path.join(ready_folder, selected_file)
     try:
-        pygame.mixer.Sound(audio_path).play()
+        sound = pygame.mixer.Sound(audio_path)
+        sound.play()
+        
+        # Keep the original message about which file is playing
         print(f"Playing ready audio: {selected_file} ({len(ready_audio_played)}/{len(ready_files)} in cycle)")
+        
+        # Run the equalizer animation directly (non-threaded) while audio plays
+        start_time = time.time()
+        
+        # Define our colors for the different levels (lowest to highest)
+        colors = ["green", "yellow", "orange", "red"]
+        
+        # Run animation until audio finishes
+        while pygame.mixer.get_busy() and equalizer_running:
+            # Generate a random pattern for the three columns
+            if matrix_display:
+                # Clear the matrix first
+                matrix_display.clear()
+                
+                # Generate a random pattern for the three columns
+                for column in range(3):
+                    # Randomly determine the height of this column (0-3)
+                    height = random.randint(0, 3)
+                    
+                    # Draw the column from bottom to top
+                    for row in range(height):
+                        # Bottom row is 2, middle is 1, top is 0
+                        y = 2 - row
+                        
+                        # Pick a color based on height
+                        color = colors[min(row, len(colors)-1)]
+                        
+                        # Higher rows get higher brightness
+                        brightness = 5 + row * 2
+                        
+                        # Set the pixel
+                        matrix_display.set_pixel((column, y), (color, brightness))
+                
+                # Wait a short time before next frame
+                time.sleep(0.15)
+            else:
+                # No matrix display, just wait for audio to complete
+                time.sleep(0.1)
+        
+        # Clear the matrix when audio finishes
+        if matrix_display:
+            matrix_display.clear()
+            
     except Exception as e:
         print(f"Error playing ready audio: {e}")
-
+    finally:
+        # Make sure equalizer is stopped and matrix is cleared
+        equalizer_running = False
+        if matrix_display:
+            try:
+                matrix_display.clear()
+            except:
+                pass
+        print("Audio playback complete")
 
 def play_prelaunch_sound(seconds):
     """Play the appropriate prelaunch sound."""
