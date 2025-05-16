@@ -48,6 +48,8 @@ def load_config():
 
 def refresh_config():
     """Refresh global variables from config file"""
+    global GATE_OPEN_ANGLE, GATE_CLOSED_ANGLE, TARGET_OPEN_TRAVEL
+    
     cfg = load_config()
     
     # Update globals with config values (with defaults if key missing)
@@ -65,6 +67,14 @@ def refresh_config():
         "DEFAULT_SPEED": cfg.get("default_speed"),
         "DEMO_CYCLES": cfg.get("demo_cycles"),
     })
+    
+    # IMPORTANT: Recalculate gate open angle based on the new target_open_travel
+    # Only do this if GATE_CLOSED_ANGLE is already defined
+    if 'GATE_CLOSED_ANGLE' in globals() and GATE_CLOSED_ANGLE is not None:
+        # Calculate the new open angle based on the current closed angle and the new target travel
+        GATE_OPEN_ANGLE = GATE_CLOSED_ANGLE + TARGET_OPEN_TRAVEL
+        print(f"Recalculated GATE_OPEN_ANGLE to {GATE_OPEN_ANGLE} (GATE_CLOSED_ANGLE {GATE_CLOSED_ANGLE} + TARGET_OPEN_TRAVEL {TARGET_OPEN_TRAVEL})")
+    
     print("Configuration reloaded from file")
 
 # Load config once at startup
@@ -570,6 +580,8 @@ def ramp_speed(motor, target_speed, ramp_time=1.0):
 
 def open_gate(motor):
     """Open the gate to GATE_OPEN_ANGLE degrees."""
+    global HOLD_POWER
+    
     if not is_motor_connected(motor):
         print("Motor disconnected - cannot open gate.")
         return False
@@ -577,9 +589,14 @@ def open_gate(motor):
     try:
         print(f"Opening gate to {GATE_OPEN_ANGLE} degrees...")
         
-        # Stop any holding power that might be applied
+        # Completely stop any holding power that might be applied
+        print("Releasing holding power before opening...")
         motor.stop()
         time.sleep(GATE_TRANSITION)  # Use configured transition time
+        
+        # BOOST POWER SETTINGS FOR OPENING
+        motor.plimit(1.0)            # Set power limit to 100%
+        motor.pwmparams(0.05, 0.01)  # Aggressive power thresholds for maximum torque
         
         # Set motor speed and open to target angle
         motor.set_default_speed(OPEN_SPEED)
@@ -591,8 +608,19 @@ def open_gate(motor):
         # Verify position reached
         if is_motor_connected(motor):
             current_pos = motor.get_position()
-            if abs(current_pos - GATE_OPEN_ANGLE) > 5:
+            if abs(current_pos - GATE_OPEN_ANGLE) > -125:
                 print(f"Warning: Gate stopped at {current_pos}, target was {GATE_OPEN_ANGLE}")
+        
+        # IMPORTANT: Apply holding power to keep gate open
+        if HOLD_POWER > 0:
+            print(f"Applying holding power ({HOLD_POWER}%) to maintain position...")
+            # For negative angles (like -90), use negative holding power
+            hold_direction = -1 if GATE_OPEN_ANGLE < 0 else 1
+            motor.start(HOLD_POWER * hold_direction)
+            
+        # Reset power settings to defaults AFTER applying holding power
+        motor.plimit(0.9)            # Reset to default power limit (90%)
+        motor.pwmparams(0.15, 0.1)   # Reset to default PWM thresholds
         
         # Print gate opened message with timestamp
         print(f"Gate opened at {current_time}!")
@@ -603,6 +631,7 @@ def open_gate(motor):
     except Exception as e:
         print(f"Error opening gate: {e}")
         return False
+
 
 
 def close_gate(motor):
@@ -1190,9 +1219,14 @@ def run_demo(motor):
             print("Motor disconnected during demo.")
             return False
         
+        
+        
+        
         # Update matrix to show open status
         display_gate_status_on_matrix(is_open=True)
             
+        
+        
         print(f"Gate open - waiting {GATE_OPEN_WAIT_TIME} seconds before closing...")
         
         # Apply holding power to resist gravity during the wait time
@@ -1593,21 +1627,50 @@ def handle_remote_button(port, value):
 
 def display_main_menu():
     """Display current settings and main menu options."""
-    print(f"\nCurrent settings:")
-    print(f"  Opening: Speed {OPEN_SPEED}%, Ramp time {OPEN_RAMP_TIME} seconds")
-    print(f"  Closing: Speed {CLOSE_SPEED}%, Ramp time {CLOSE_RAMP_TIME} seconds")
-    print(f"  Gate open wait time: {GATE_OPEN_WAIT_TIME} seconds")
-    print(f"  Holding power: {HOLD_POWER}%")
-    print(f"  Closed holding power: {CLOSED_HOLD_POWER}%")
-    print(f"  Demo cycles: {DEMO_CYCLES}")
+    # Clear several lines for better visibility
+    print("\n\n" + "-" * 80)
+    print("=" * 30 + " CURRENT SETTINGS " + "=" * 30)
+    print("-" * 80)
+    
+    # Display settings in a structured format
+    print("│ {:<25} {:>10} │ {:<25} {:>10} │".format(
+        "Button debounce time:", f"{BUTTON_DEBOUNCE_TIME}s",
+        "Target open travel:", f"{TARGET_OPEN_TRAVEL}°"))
+    
+    print("│ {:<25} {:>10} │ {:<25} {:>10} │".format(
+        "Gate transition:", f"{GATE_TRANSITION}s",
+        "Opening speed:", f"{OPEN_SPEED}%"))
+        
+    print("│ {:<25} {:>10} │ {:<25} {:>10} │".format(
+        "Closing speed:", f"{CLOSE_SPEED}%",
+        "Opening ramp time:", f"{OPEN_RAMP_TIME}s"))
+        
+    print("│ {:<25} {:>10} │ {:<25} {:>10} │".format(
+        "Closing ramp time:", f"{CLOSE_RAMP_TIME}s",
+        "Gate open wait time:", f"{GATE_OPEN_WAIT_TIME}s"))
+        
+    print("│ {:<25} {:>10} │ {:<25} {:>10} │".format(
+        "Holding power:", f"{HOLD_POWER}%",
+        "Closed holding power:", f"{CLOSED_HOLD_POWER}%"))
+        
+    print("│ {:<25} {:>10} │ {:<25} {:>10} │".format(
+        "Default speed:", f"{DEFAULT_SPEED}%",
+        "Demo cycles:", f"{DEMO_CYCLES}"))
     
     # Main menu
-    print("\n" + "-" * 50)
+    print("-" * 80)
+    print("=" * 30 + " MAIN MENU " + "=" * 32)
+    print("-" * 80)
     print("Position monitor is running in the background")
     print("Remote control is listening for LEGO 88010 remote button presses")
-    print("(Position updates will appear above this menu)")
-    print("-" * 50 + "\n")
-    print("Select mode:\n1. Run demo\n2. Interactive control\n3. Change port\n4. Reset motor position to 0\n5. Quit")
+    print("Position updates will appear above this menu")
+    print("-" * 80)
+    print("\nSelect mode:")
+    print("1. Run demo")
+    print("2. Interactive control")
+    print("3. Change port")
+    print("4. Reset motor position to 0")
+    print("5. Quit")
     print("Waiting for input...", flush=True)
 
 def start_remote_control_thread(loop):
@@ -1754,11 +1817,18 @@ def main():
         
         # Display current settings
         print(f"\nCurrent settings:")
-        print(f"  Opening: Speed {OPEN_SPEED}%, Ramp time {OPEN_RAMP_TIME} seconds")
-        print(f"  Closing: Speed {CLOSE_SPEED}%, Ramp time {CLOSE_RAMP_TIME} seconds")
-        print(f"  Gate open wait time: {GATE_OPEN_WAIT_TIME} seconds")
+        print(f"  Button debounce time: {BUTTON_DEBOUNCE_TIME}s")
+        print(f"  Target open travel: {TARGET_OPEN_TRAVEL}°")
+        print(f"  Gate transition: {GATE_TRANSITION}s")
+        print(f"  Opening speed: {OPEN_SPEED}%")
+        print(f"  Closing speed: {CLOSE_SPEED}%")
+        print(f"  Opening ramp time: {OPEN_RAMP_TIME}s")
+        print(f"  Closing ramp time: {CLOSE_RAMP_TIME}s")
+        print(f"  Gate open wait time: {GATE_OPEN_WAIT_TIME}s")
         print(f"  Holding power: {HOLD_POWER}%")
         print(f"  Closed holding power: {CLOSED_HOLD_POWER}%")
+        print(f"  Default speed: {DEFAULT_SPEED}%")
+        print(f"  Demo cycles: {DEMO_CYCLES}")
         
         # Main menu
         print("\n" + "-" * 50)
