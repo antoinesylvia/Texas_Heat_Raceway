@@ -670,7 +670,7 @@ def open_gate(motor):
         # Verify position reached
         if is_motor_connected(motor):
             current_pos = motor.get_position()
-            if abs(current_pos - GATE_OPEN_ANGLE) > 5:
+            if abs(current_pos - GATE_OPEN_ANGLE) > -125:
                 print(f"Warning: Gate stopped at {current_pos}, target was {GATE_OPEN_ANGLE}")
         
         # IMPORTANT: Apply holding power to keep gate open
