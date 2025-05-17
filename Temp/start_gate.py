@@ -1881,7 +1881,7 @@ def handle_remote_button(port, value):
             print(f"IGNORED: Button press too soon after previous press ({time_since_last:.2f}s < {BUTTON_DEBOUNCE_TIME}s)")
             
             # Even when ignoring, redisplay the menu to keep the UI consistent
-            display_main_menu()
+            #display_main_menu()
             return
         
         # Check if a demo is already running
