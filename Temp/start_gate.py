@@ -6,19 +6,20 @@ with automatic port detection and disconnect handling
 """
 
 
-import time
-import threading
-from buildhat import Motor, Hat, Matrix, ColorSensor, ColorDistanceSensor, DistanceSensor, ForceSensor
-from buildhat.exc import DeviceError
-import sys
-import os
-
-import random 
-import remote  # Add this import for the LEGO remote control
 import asyncio
 import atexit
-import yaml
+from buildhat import Motor, Hat, Matrix, ColorSensor, ColorDistanceSensor, DistanceSensor, ForceSensor
+from buildhat.exc import DeviceError
+import ntplib
+import os
 import pygame
+import random
+import remote  # Add this import for the LEGO remote control
+import sys
+import threading
+import time
+from time import ctime
+import yaml
 
 # Initialize pygame mixer for sound playback
 try:
@@ -27,7 +28,74 @@ try:
 except Exception as e:
     print(f"Warning: Could not initialize sound system: {e}")
 
+def sync_time_with_ntp():
+    """
+    Synchronize system time with NTP server to ensure accurate timestamps.
+    This doesn't actually change system time, but reports offset for logging purposes.
+    """
+    try:
+        
+        
+        print("Synchronizing with NTP time server...")
+        
+        # Create NTP client
+        client = ntplib.NTPClient()
+        
+        # Query several NTP servers for redundancy
+        ntp_servers = [
+            'pool.ntp.org',
+            'time.google.com',
+            'time.windows.com',
+            'time.apple.com'
+        ]
+        
+        for server in ntp_servers:
+            try:
+                # Request time from server with short timeout
+                response = client.request(server, timeout=1)
+                
+                # Get the offset between system time and NTP time
+                offset = response.offset
+                
+                # Log the time synchronization results
+                print(f"✓ Time synchronized with {server}")
+                print(f"  System time: {ctime()}")
+                print(f"  NTP time:    {ctime(response.tx_time)}")
+                print(f"  Offset:      {offset*1000:.2f} ms")
+                
+                if abs(offset) > 0.5:  # If more than 500ms off
+                    print(f"⚠️ WARNING: System clock is off by {offset:.2f} seconds")
+                    print("  Timestamps may not be fully accurate")
+                    print("  Consider running 'sudo ntpdate pool.ntp.org' to sync system clock")
+                else:
+                    print(f"✓ System clock accuracy is within {abs(offset)*1000:.1f}ms")
+                
+                return True
+                
+            except Exception as e:
+                print(f"Failed to sync with {server}: {e}")
+                continue
+        
+        print("⚠️ WARNING: Could not synchronize with any NTP server")
+        return False
+        
+    except ImportError:
+        print("⚠️ ntplib module not installed. Run 'pip install ntplib' for accurate time sync")
+        print("  Continuing with system time only")
+        return False
+    except Exception as e:
+        print(f"⚠️ Error during time synchronization: {e}")
+        print("  Continuing with system time only")
+        return False
 
+
+def format_time_with_ms():
+    """Get current time with milliseconds precision."""
+    current = time.time()
+    # Get milliseconds part
+    milliseconds = int((current % 1) * 1000)
+    # Format time with standard strftime plus milliseconds
+    return f"{time.strftime('%H:%M:%S', time.localtime(current))}.{milliseconds:03d}"
 
 
 # Configuration
@@ -136,6 +204,7 @@ def detect_special_devices():
    ports = ['A', 'B', 'C', 'D']
    special_devices = {}
   
+   print("")
    print("Checking for special devices...")
   
    for port in ports:
@@ -221,13 +290,6 @@ def detect_special_devices():
   
    print("\n")  # Add extra blank line before motor scanning
    return special_devices
-
-
-
-
-
-
-
 
 def detect_motors():
    """Detect motors connected to ports A through D."""
@@ -608,7 +670,7 @@ def open_gate(motor):
         # Verify position reached
         if is_motor_connected(motor):
             current_pos = motor.get_position()
-            if abs(current_pos - GATE_OPEN_ANGLE) > -125:
+            if abs(current_pos - GATE_OPEN_ANGLE) > 5:
                 print(f"Warning: Gate stopped at {current_pos}, target was {GATE_OPEN_ANGLE}")
         
         # IMPORTANT: Apply holding power to keep gate open
@@ -722,91 +784,7 @@ def test_matrix(matrix_port):
        # Display a welcome message
        print("Displaying welcome pattern...")
       
-       # Set all pixels to green at medium brightness
-       matrix.clear(("green", 5))
-       time.sleep(1)
-      
-       # Display a countdown from 3 to 1
-       for number in [3, 2, 1]:
-           print(f"Displaying number {number}...")
-          
-           # First clear
-           matrix.clear()
-          
-           if number == 3:
-               # Create a "3" pattern
-               pattern = [
-                   [(0, 0), ("red", 8)],
-                   [(1, 0), ("red", 8)],
-                   [(2, 0), ("red", 8)],
-                   [(2, 1), ("red", 8)],
-                   [(0, 2), ("red", 8)],
-                   [(1, 2), ("red", 8)],
-                   [(2, 2), ("red", 8)],
-                   [(2, 1), ("red", 8)]
-               ]
-           elif number == 2:
-               # Create a "2" pattern
-               pattern = [
-                   [(0, 0), ("orange", 8)],
-                   [(1, 0), ("orange", 8)],
-                   [(2, 0), ("orange", 8)],
-                   [(2, 1), ("orange", 8)],
-                   [(0, 2), ("orange", 8)],
-                   [(1, 2), ("orange", 8)],
-                   [(2, 2), ("orange", 8)],
-                   [(0, 1), ("orange", 8)]
-               ]
-           elif number == 1:
-               # Create a "1" pattern
-               pattern = [
-                   [(1, 0), ("yellow", 8)],
-                   [(1, 1), ("yellow", 8)],
-                   [(1, 2), ("yellow", 8)]
-               ]
-              
-           # Display the pattern
-           for coord, pixel in pattern:
-               matrix.set_pixel(coord, pixel)
-              
-           time.sleep(1)
-      
-       # Display "GO!" with all green
-       print("Displaying GO!")
-       matrix.clear(("green", 10))
-       time.sleep(1)
-      
-       # Demonstrate gate status indicators
-       print("\nDemonstrating gate status indicators...")
-      
-       # Gate closed indicator (red X)
-       print("Gate CLOSED indicator (red X)")
-       matrix.clear()
-       closed_pattern = [
-           [(0, 0), ("red", 8)],
-           [(1, 0), ("red", 8)],
-           [(2, 0), ("red", 8)],
-           [(0, 1), ("red", 8)],
-           [(0, 2), ("red", 8)],
-           [(0, 2), ("red", 8)],
-           [(1, 2), ("red", 8)],
-           [(2, 2), ("red", 8)]
-       ]
-       for coord, pixel in closed_pattern:
-           matrix.set_pixel(coord, pixel)
-       time.sleep(2)
-      
-       # Gate open indicator (green checkmark)
-       print("Gate OPEN indicator (green checkmark)")
-       matrix.clear()
-       open_pattern = [
-           [(0, 1), ("green", 8)],
-           [(1, 2), ("green", 8)],
-           [(2, 0), ("green", 8)]
-       ]
-       for coord, pixel in open_pattern:
-           matrix.set_pixel(coord, pixel)
-       time.sleep(2)
+       
       
        # Demo color range with transition effects
        print("Demonstrating color transition effects...")
@@ -816,8 +794,8 @@ def test_matrix(matrix_port):
        matrix.set_transition(2)  # Mode 2: Fade
       
        # Display different colors one after another
-       colors = ["red", "orange", "yellow", "green", "turquoise",
-                "cyan", "blue", "lilac", "pink", "white"]
+       colors = ["red", "orange", "yellow", "green", 
+                "cyan", "blue", "pink", "white"]
       
        print("Cycling through colors...")
        for color in colors:
@@ -1105,7 +1083,17 @@ def play_crowd_sound(seconds):
         except Exception as e:
             print(f"Error playing crowd sound: {e}")
 
-
+def play_welcome(seconds):
+    """Play the appropriate crowd sound."""
+    audio_files = {
+        0: "Audio/Welcome/i-used-to-drag-here-back-in-high-school.wav"
+    }
+    
+    if seconds in audio_files and os.path.exists(audio_files[seconds]):
+        try:
+            pygame.mixer.Sound(audio_files[seconds]).play()
+        except Exception as e:
+            print(f"Error playing crowd sound: {e}")
 
 def display_countdown_on_matrix(seconds):
     """Display countdown visualization on the Matrix LED and play audio."""
@@ -1392,7 +1380,7 @@ def run_demo(motor):
     print("-" * 40)
     print("All critical components verified")
     play_random_ready_audio()
-    time.sleep(5)  # Give time for audio to play
+    
     print("Starting Gate Demo")
     print("-" * 40)
     
@@ -1868,10 +1856,6 @@ def interactive_mode(motor):
 # Global motor reference for remote control
 global_motor = None
 
-
-
-
-
 # Then modify your handle_remote_button function:
 def handle_remote_button(port, value):
     global global_motor, DEMO_RUNNING, LAST_BUTTON_PRESS
@@ -2000,6 +1984,12 @@ def main():
     clear_screen()
     print("=== Raspberry Pi BuildHAT Swing Gate Controller ===\n")
     
+    # Sync time with NTP server for accurate timestamps
+    sync_time_with_ntp()
+    
+    # Play Welcome Sound
+    play_welcome(0)
+    
     # First check for special devices like Matrix, ColorSensors, etc.
     special_devices = detect_special_devices()
     
@@ -2011,28 +2001,13 @@ def main():
             break
     
     if matrix_port:
-        import select
-        import sys
-        
         print(f"\nLED Matrix found on port {matrix_port}!")
-        print("Press any key within 5 seconds to run a Matrix demo...")
+        print("Running LED Matrix initialization sequence...")
         
-        # Start a 5-second countdown
-        for i in range(5, 0, -1):
-            print(f"\rStarting in {i} seconds... (press any key to run demo)", end="", flush=True)
-            
-            # Check if any key was pressed during this second
-            rlist, _, _ = select.select([sys.stdin], [], [], 1)
-            if rlist:
-                # Read and discard the pressed key
-                sys.stdin.read(1)
-                print("\nRunning LED Matrix demo...")
-                test_matrix(matrix_port)
-                break
+        # Run the matrix test automatically
+        test_matrix(matrix_port)
         
-        print("\r" + " " * 60 + "\r", end="") # Clear the countdown line
-        
-        # Initialize the Matrix for use in the program regardless of demo choice
+        # Initialize the Matrix for use in the program 
         print("Initializing Matrix for use during gate operation...")
         initialize_matrix(matrix_port)
     
