@@ -4,7 +4,7 @@ Advanced I2C Sensor Test Script for Raspbian
 Auto-detects connection type (Raspberry Pi HAT or MCP2221A), multiplexer type, and sensors
 
 Usage:
-    python sensor_calibration_done.py       # Run full automated test
+    python sensaor_calibration_done.py       # Run full automated test
     python sensor_calibration_done.py -m    # Run in manual/interactive mode
 """
 import time
