@@ -940,6 +940,15 @@ def display_on_screen(race_results_list, current_formatted_race_id, num_lanes_to
             f"Speed: {result[3]:.2f} mph" if result and result[3] is not None else "Speed: ---"
         ]
 
+        # Draw status dot (red by default, green if first place)
+        dot_radius = 10
+        dot_center_x = x + column_width // 2
+        dot_center_y = y + dot_radius + 5  # Slightly above the Lane X label
+        dot_color = (0, 255, 0) if result and result[1] == 1 else (255, 0, 0)
+        pygame.draw.circle(screen, dot_color, (dot_center_x, dot_center_y), dot_radius)
+
+        y += dot_radius * 2 + 5  # Adjust Y to leave room for the dot
+        
         for idx, line in enumerate(lines):
             try:
                 text_surface = font.render(line, True, text_color)
@@ -1231,7 +1240,7 @@ def check_finish_conditions(num_lanes_active=6):
         logger.warning(f"Race appears to have exceeded timeout significantly but not all lanes marked. Forcing finish.")
         # Ensure all remaining None lanes are marked DNF before finishing
         for lane_idx in range(num_lanes_active):
-            if finish_times[lane_idx] is None:
+            if finish_times[lane_idx] is None or finish_times[lane_idx] == float('inf'):
                 finish_times[lane_idx] = start_time + max_race_duration_config  # Set to actual timeout moment
                 logger.info(f"Lane {lane_idx + 1} DNF (Timeout). Time set to {max_race_duration_config:.3f}s.")
         finish_race_action()
