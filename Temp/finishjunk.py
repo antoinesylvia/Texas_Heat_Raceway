@@ -4,7 +4,7 @@ os.environ['BLINKA_MCP2221'] = '1'
 import argparse
 
 from collections import deque
-import config # Local application import
+
 import digitalio
 import logging
 import numpy as np # Typically aliased as np
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 # Constants from config
 LIGHT_SENSOR_THRESHOLD = config.LIGHT_SENSOR_THRESHOLD
 TRACK_LENGTH_INCHES = config.TRACK_LENGTH_INCHES
-TIMEOUT_DURATION = config.TIMEOUT_DURATION
+MAX_RACE_DURATION = config.MAX_RACE_DURATION
 SCREEN_WIDTH = config.SCREEN_WIDTH
 SCREEN_HEIGHT = config.SCREEN_HEIGHT
 FULLSCREEN = config.FULLSCREEN
@@ -706,7 +706,7 @@ finish_times = [None] * 6 # For 6 lanes
 current_race_number = None
 formatted_race = None
 light_sensors = {} # Dictionary to hold LightSensor objects, keyed by lane number
-timeout_duration_config = TIMEOUT_DURATION # From config.py
+max_race_duration_config = MAX_RACE_DURATION # From config.py
 i2c_bus_global = None # To hold the I2C busio.I2C object
 mux_global = None # To hold the TCA9548A object
 
@@ -900,7 +900,6 @@ def initialize_display():
         return False
 
 def display_on_screen(race_results_list, current_formatted_race_id, num_lanes_to_display=6):
-    """Display race results on the Pygame screen."""
     global screen, font
     if not screen or not font:
         logger.warning("Display not available, cannot show results on screen.")
@@ -908,61 +907,49 @@ def display_on_screen(race_results_list, current_formatted_race_id, num_lanes_to
 
     screen.fill((0, 0, 0))  # Black background
 
-    # Display Race ID
+    # Display Race ID at the top center
     if current_formatted_race_id:
         try:
-            text_surface = font.render(f"Race: {current_formatted_race_id}", True, (255, 255, 255)) # White text
-            screen.blit(text_surface, (10, 10))
+            text_surface = font.render(f"Race: {current_formatted_race_id}", True, (255, 255, 255))
+            screen.blit(text_surface, (SCREEN_WIDTH // 2 - text_surface.get_width() // 2, 5))
         except Exception as e:
-            logger.error(f"Error rendering race ID on screen: {e}")
-    
-    header_offset_y = 40 if current_formatted_race_id else 10
+            logger.error(f"Error rendering race ID: {e}")
 
-    # Calculate height per lane section
-    available_height = SCREEN_HEIGHT - header_offset_y - (10 * (num_lanes_to_display -1)) # Subtract some padding
-    section_height = available_height // num_lanes_to_display if num_lanes_to_display > 0 else available_height
-
+    # Calculate layout
+    column_width = SCREEN_WIDTH // num_lanes_to_display
+    top_offset = 40
+    row_spacing = 5
 
     for i in range(num_lanes_to_display):
         lane_number = i + 1
-        result_for_lane = next((r for r in race_results_list if r[0] == lane_number), None)
-        
-        start_y = header_offset_y + i * (section_height + 10) # Add padding between sections
+        result = next((r for r in race_results_list if r[0] == lane_number), None)
+        x = i * column_width
+        y = top_offset
 
-        text_color = (200, 200, 200) # Default text color (light gray)
-        box_color = None # No box by default
+        # Background color
+        bg_color = (0, 100, 0) if result and result[1] == 1 else (50, 50, 50)
+        pygame.draw.rect(screen, bg_color, (x + 5, y, column_width - 10, SCREEN_HEIGHT - y - 10))
 
-        if result_for_lane:
-            _, place, elapsed_time, speed = result_for_lane
-            lane_text = f"Lane {lane_number}"
-            place_text = f"Place: {place if place else 'DNF'}"
-            time_text = f"Time: {elapsed_time:.3f}s" if elapsed_time is not None else "Time: DNF"
-            speed_text = f"Speed: {speed:.2f} mph" if speed is not None else "Speed: ---"
-            if place == 1:
-                text_color = (0, 255, 0) # Green for winner
-                box_color = (0, 100, 0) # Dark green box for winner
-        else: # Lane did not participate or no result entry
-            lane_text = f"Lane {lane_number}"
-            place_text = "Place: ---"
-            time_text = "Time: ---"
-            speed_text = "Speed: ---"
+        # Text color
+        text_color = (255, 255, 255)
 
-        # Draw box if needed
-        if box_color:
-            pygame.draw.rect(screen, box_color, (5, start_y - 2, SCREEN_WIDTH - 10, section_height + 4), 0) # Filled rect
-            pygame.draw.rect(screen, text_color, (5, start_y - 2, SCREEN_WIDTH - 10, section_height + 4), 2) # Border for winner
+        lines = [
+            f"Lane {lane_number}",
+            f"Place: {result[1] if result and result[1] else 'DNF'}",
+            f"Time: {result[2]:.3f}s" if result and result[2] is not None else "Time: ---",
+            f"Speed: {result[3]:.2f} mph" if result and result[3] is not None else "Speed: ---"
+        ]
 
-        # Render and blit texts
-        try:
-            y_offset = start_y
-            for line_text in [lane_text, place_text, time_text, speed_text]:
-                line_surface = font.render(line_text, True, text_color)
-                screen.blit(line_surface, (15, y_offset))
-                y_offset += font.get_height() + 2 # Spacing between lines of text for a lane
-        except Exception as e:
-            logger.error(f"Error rendering text for lane {lane_number} on screen: {e}")
-            
+        for line in lines:
+            try:
+                text_surface = font.render(line, True, text_color)
+                screen.blit(text_surface, (x + 15, y))
+                y += text_surface.get_height() + row_spacing
+            except Exception as e:
+                logger.error(f"Error rendering line for lane {lane_number}: {e}")
+
     pygame.display.flip()
+
 
 
 def calculate_speed(race_time_seconds):
@@ -1195,9 +1182,9 @@ def check_finish_conditions(num_lanes_active=6):
     for lane_idx in range(num_lanes_active): # 0 to num_lanes_active-1
         lane_num_for_log = lane_idx + 1
         if finish_times[lane_idx] is None: # If this lane hasn't recorded a finish time
-            if (current_event_time - start_time) > timeout_duration_config:
-                finish_times[lane_idx] = float('inf') # Mark as DNF (infinity time, will be handled in results)
-                logger.info(f"Lane {lane_num_for_log} DNF (Timeout: >{timeout_duration_config}s).")
+            if (current_event_time - start_time) > max_race_duration_config:
+                finish_times[lane_idx] = start_time + max_race_duration_config
+                logger.info(f"Lane {lane_num_for_log} DNF (Timeout: >{max_race_duration_config}s).")
                 # Turn on LED to indicate DNF or some other signal? Optional.
                 # if lane_num_for_log in leds: leds[lane_num_for_log].value = True # Example: also light up DNF lanes
             else:
@@ -1209,14 +1196,14 @@ def check_finish_conditions(num_lanes_active=6):
     if all_lanes_accounted_for or num_finished_lanes == num_lanes_active :
         logger.info("All active lanes have finished or timed out.")
         finish_race_action()
-    elif (current_event_time - start_time) > (timeout_duration_config + 2) and race_in_progress:
+    elif (current_event_time - start_time) > (max_race_duration_config + 2) and race_in_progress:
         # Safety net: if race is still marked as in_progress well after timeout (e.g. a logic glitch)
         logger.warning(f"Race appears to have exceeded timeout significantly but not all lanes marked. Forcing finish.")
         # Ensure all remaining None lanes are marked DNF before finishing
         for lane_idx in range(num_lanes_active):
             if finish_times[lane_idx] is None:
-                finish_times[lane_idx] = float('inf') # DNF
-                logger.info(f"Lane {lane_idx+1} force DNF post-timeout.")
+                finish_times[lane_idx] = start_time + max_race_duration_config  # Set to actual timeout moment
+                logger.info(f"Lane {lane_idx + 1} DNF (Timeout). Time set to {max_race_duration_config:.3f}s.")
         finish_race_action()
 
 def reset_race_state():
@@ -1406,6 +1393,28 @@ def main_loop(num_lanes_in_use=6):
                 # For now, sensor updates are mainly driven by check_finish_conditions or calibration
                 pass # Idle state for sensors unless specific monitoring is needed
 
+            
+                # Draw live race progress (with current elapsed times)
+            if screen and font and start_time:
+                current_perf = time.perf_counter()
+                live_results = []
+
+                for idx in range(NUMBER_OF_LANES):
+                    lane = idx + 1
+                    if finish_times[idx] is not None:
+                        elapsed = finish_times[idx] - start_time
+                        place = None  # Will be filled in after race ends
+                        speed = calculate_speed(elapsed)
+                    else:
+                        elapsed = current_perf - start_time
+                        place = None
+                        speed = None
+
+                    live_results.append((lane, place, elapsed, speed))
+
+                display_on_screen(live_results, formatted_race, num_lanes_to_display=NUMBER_OF_LANES)
+
+            
             # Periodic tasks
             if current_loop_time - last_status_send_time > status_send_interval:
                 send_component_status()
