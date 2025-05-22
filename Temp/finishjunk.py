@@ -940,10 +940,17 @@ def display_on_screen(race_results_list, current_formatted_race_id, num_lanes_to
             f"Speed: {result[3]:.2f} mph" if result and result[3] is not None else "Speed: ---"
         ]
 
-        for line in lines:
+        for idx, line in enumerate(lines):
             try:
                 text_surface = font.render(line, True, text_color)
-                screen.blit(text_surface, (x + 15, y))
+                text_rect = text_surface.get_rect()
+                # Center "Lane X", left-align the rest
+                if idx == 0:
+                    text_rect.centerx = x + column_width // 2
+                else:
+                    text_rect.x = x + 15
+                text_rect.y = y
+                screen.blit(text_surface, text_rect)
                 y += text_surface.get_height() + row_spacing
             except Exception as e:
                 logger.error(f"Error rendering line for lane {lane_number}: {e}")
@@ -1422,8 +1429,11 @@ def main_loop(num_lanes_in_use=6):
                             else:
                                 logger.info("SPACE key: Race in progress. To reset, send command or use ESC to quit.")
                         elif event.key == pygame.K_r: # Example: Manual reset via 'r' key
-                             logger.info("R key: Initiating gate reset.")
-                             reset_race_state()
+                            logger.info("R key: Initiating gate reset.")
+                            reset_race_state()
+                            if offline_mode:
+                                formatted_race = f"LocalTest_{int(time.time())}"
+                                start_race_action()
 
 
             # Core race logic: check for finishes if a race is active
