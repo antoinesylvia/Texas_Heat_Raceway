@@ -1078,6 +1078,24 @@ def start_race_action():
     logger.info(f"Race {formatted_race if formatted_race else ''} started at {start_time:.4f}. Monitoring lanes.")
     send_race_state_to_server('Racing')
 
+def display_race_end_prompt():
+    """Display a prompt to press 'R' to start a new race."""
+    if not screen or not font:
+        return
+        
+    # Check if we're running in offline mode
+    offline_mode = getattr(config, 'OFFLINE_MODE', False) or '--offline_mode' in sys.argv
+    
+    if offline_mode:
+        prompt_text = "Press 'R' to start a new local race"
+    else:
+        prompt_text = "Press 'R' to reset, or wait for server commands"
+    
+    text_surface = font.render(prompt_text, True, (255, 255, 255))
+    text_rect = text_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 30))
+    screen.blit(text_surface, text_rect)
+    pygame.display.flip()
+
 
 def finish_race_action():
     """Action to take when a race finishes (all cars crossed or timeout)."""
@@ -1128,9 +1146,11 @@ def finish_race_action():
     # Ensure results_list is sorted by lane for consistent display if needed, though display might re-sort or handle order.
     results_list.sort(key=lambda x: x[0])
 
-
     # Display results on screen
     display_on_screen(results_list, formatted_race, num_lanes_to_display=len(finish_times))
+    
+    # Add the prompt to restart the race
+    display_race_end_prompt()
     
     logger.info("Race results processed:")
     for res in results_list:
@@ -1146,6 +1166,9 @@ def finish_race_action():
     save_race_results_to_server(start_time, results_list) # Save the processed results
 
     logger.info(f"Race {formatted_race if formatted_race else ''} officially concluded.")
+    
+    # Display the prompt again in case it was covered during the delay
+    display_race_end_prompt()
 
 
 def check_finish_conditions(num_lanes_active=6):
@@ -1348,11 +1371,14 @@ def save_race_results_to_server(race_start_perf_time, processed_results_list):
 
 def main_loop(num_lanes_in_use=6):
     """Main event loop for the finish gate system."""
-    global running_main_loop, formatted_race, current_race_number  # Add these to the globals
+    global running_main_loop, formatted_race, current_race_number
     running_main_loop = True
     
     last_status_send_time = time.time()
     status_send_interval = 30 # Send component status every 30 seconds
+
+    # Check if we're running in offline mode
+    offline_mode = getattr(config, 'OFFLINE_MODE', False) or '--offline_mode' in sys.argv
 
     logger.info(f"Finish Gate main loop started. Monitoring {num_lanes_in_use} lanes.")
     send_race_state_to_server('Ready') # Initial state
@@ -1372,11 +1398,27 @@ def main_loop(num_lanes_in_use=6):
                             logger.info("ESCAPE key pressed. Shutting down.")
                             running_main_loop = False
                         elif event.key == pygame.K_SPACE: # Example: Manual race start/reset via spacebar
-                            if not race_in_progress:
-                                logger.info("SPACE key: Initiating race start.")
-                                # Potentially set a dummy race ID if not from server
-                                if not formatted_race: formatted_race = f"LocalTest_{int(time.time())}"
+                            # Only allow starting a local test race if in offline mode
+                            if not race_in_progress and offline_mode:
+                                logger.info("SPACE key: Initiating local race start.")
+                                # Create a local race ID
+                                formatted_race = f"LocalTest_{int(time.time())}"
                                 start_race_action()
+                            elif not race_in_progress and not offline_mode:
+                                logger.info("SPACE key: Cannot start local race in online mode. Wait for server commands.")
+                                # Display a message on screen if available
+                                if screen and font:
+                                    screen.fill((50, 0, 0))  # Dark red background to indicate error
+                                    message = "Cannot start local race in online mode"
+                                    text_surface = font.render(message, True, (255, 255, 255))
+                                    text_rect = text_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+                                    screen.blit(text_surface, text_rect)
+                                    
+                                    submessage = "Switch to offline mode or wait for server commands"
+                                    sub_surface = font.render(submessage, True, (255, 255, 255))
+                                    sub_rect = sub_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 40))
+                                    screen.blit(sub_surface, sub_rect)
+                                    pygame.display.flip()
                             else:
                                 logger.info("SPACE key: Race in progress. To reset, send command or use ESC to quit.")
                         elif event.key == pygame.K_r: # Example: Manual reset via 'r' key
