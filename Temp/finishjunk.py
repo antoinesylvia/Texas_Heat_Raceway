@@ -1044,7 +1044,7 @@ def display_on_screen(race_results_list, current_formatted_race_id, num_lanes_to
             # Winner gets special blinking green dot
             if blink_cycle:
                 dot_color = (0, 255, 0)   # Bright green
-                dot_radius_current = 12   # Slightly larger
+                dot_radius_current = 10.5   # Slightly larger
             else:
                 dot_color = (0, 200, 0)   # Slightly dimmer green
                 dot_radius_current = 10
@@ -1395,6 +1395,9 @@ def finish_race_action():
     # Check if we're running in offline mode
     offline_mode = getattr(config, 'OFFLINE_MODE', False) or '--offline_mode' in sys.argv
     
+    # Store final results for continued display in main loop
+    main_loop.last_race_results = results_list
+    
     # Display results on screen (MUST happen before checking offline mode)
     display_on_screen(results_list, formatted_race, num_lanes_to_display=len(finish_times))
     
@@ -1732,9 +1735,9 @@ def main_loop(num_lanes_in_use=6):
                     display_on_screen(live_results, formatted_race, num_lanes_to_display=num_lanes_in_use)
                     
                 elif not race_in_progress:
-                    # Race not active - show ready state or last results
-                    # This could show a "Ready" screen or maintain last race results
-                    pass
+                    # Race finished - continue showing final results with winner blinking
+                    if hasattr(main_loop, 'last_race_results') and main_loop.last_race_results:
+                        display_on_screen(main_loop.last_race_results, formatted_race, num_lanes_to_display=num_lanes_in_use)
             
             # Periodic tasks
             if current_loop_time - last_status_send_time > status_send_interval:
