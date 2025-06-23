@@ -216,22 +216,6 @@ Additional advanced calculations.
 
   - Mass of the Car (assumed or known) (from Part 1).
 
-## Heat Generation
-
-- Thermal Analysis: Estimate heat generated due to friction.
-
-- Why it applies: Heat generation due to friction can lead to energy loss, affecting the car’s performance. Understanding this helps in designing wheels and tracks that minimize friction.
-
-- Formula: Q = F_friction * d
-
-- Required Data:
-
-  - Friction Force (from Part 3).
-
-  - Velocity of the Car (from Part 1).
-
-  - Time Spent on the Straightaway (from Part 1 and Part 2).
-
 ## Vibration Dynamics
 
 - Analyze Stability and Vibrations: Explore how vibrations impact performance.
@@ -243,22 +227,6 @@ Additional advanced calculations.
   - Acceleration Data at Various Points (from Part 2 if acceleration sensors are used).
 
   - Velocity Data (from Part 1).
-
-## Torque
-
-- Rotational Forces: Measure forces acting on the wheels.
-
-- Why it applies: Torque affects how the wheels turn and the overall acceleration of the car. Understanding torque helps in optimizing the wheel design for better performance.
-
-- Formula: τ = F * r
-
-- Required Data:
-
-  - Acceleration (from Part 2).
-
-  - Frictional Force (from Part 3).
-
-  - Wheel Radius (assumed or known) (from Part 1).
 
 ## Impulse and Jerk
 
