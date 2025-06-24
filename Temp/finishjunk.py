@@ -5,19 +5,22 @@ import argparse
 
 from collections import deque
 
-import digitalio
-import logging
-import numpy as np # Typically aliased as np
 
+import logging
+
+import json
+import os
 import pygame
 import socketio # Or from socketio import Client if you only use Client directly
 import subprocess
 import sys
 import time
+from datetime import datetime
+import requests
 
 import config # Local application import
 
-from PIL import Image, ImageDraw, ImageFont
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -43,6 +46,12 @@ ROLLING_WINDOW_SIZE = getattr(config, 'ROLLING_WINDOW_SIZE', 10)
 MIN_ABSOLUTE_CHANGE = getattr(config, 'MIN_ABSOLUTE_CHANGE', 5.0)  # in lux
 MIN_PERCENT_CHANGE = getattr(config, 'MIN_PERCENT_CHANGE', 20)    # in %
 NOISE_THRESHOLD = getattr(config, 'NOISE_THRESHOLD', 2.0)         # below this, apply stricter filtering
+
+weather_cache = {'temp': '--', 'humidity': '--', 'last_update': 0}
+WEATHER_CACHE_DURATION = 600  # Update weather every 10 minutes
+
+track_record = None
+TRACK_RECORD_FILE = "track_record.json"
 
 placement_counter = 1  # Starts from 1st place
 
@@ -100,6 +109,86 @@ def sync_system_time():
     logger.warning("Could not synchronize system time. Timestamps may be inaccurate.")
     return False
 
+def get_weather_data():
+    """Fetch weather data from OpenWeatherMap API with caching."""
+    global weather_cache
+    
+    current_time = time.time()
+    
+    # Return cached data if it's still fresh
+    if current_time - weather_cache['last_update'] < WEATHER_CACHE_DURATION:
+        return weather_cache['temp'], weather_cache['humidity']
+    
+    try:
+        # Get API key and city ID from config
+        api_key = getattr(config, 'WEATHER_API_KEY', None)
+        city_id = getattr(config, 'WEATHER_CITY_ID', '4699066')  # Irving, Texas default
+        
+        if not api_key or api_key == 'xxxxxxxxxxxxxxxx':
+            return '--', '--'
+        
+        # OpenWeatherMap Current Weather API (simpler than One Call 3.0)
+        url = f"https://api.openweathermap.org/data/2.5/weather?id={city_id}&appid={api_key}&units=imperial"
+        
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        
+        data = response.json()
+        temp = round(data['main']['temp'])
+        humidity = data['main']['humidity']
+        
+        # Update cache
+        weather_cache['temp'] = temp
+        weather_cache['humidity'] = humidity
+        weather_cache['last_update'] = current_time
+        
+        return temp, humidity
+        
+    except Exception as e:
+        logger.warning(f"Failed to fetch weather data: {e}")
+        return weather_cache['temp'], weather_cache['humidity']
+
+def load_track_record():
+    """Load track record from JSON file at startup."""
+    global track_record
+    try:
+        if os.path.exists(TRACK_RECORD_FILE):
+            with open(TRACK_RECORD_FILE, 'r') as f:
+                data = json.load(f)
+                track_record = data.get('track_record')
+                logger.info(f"Loaded local track record: {track_record:.3f}s" if track_record else "No local track record found")
+        else:
+            logger.info("No local track record file found - will request from server if connected")
+    except Exception as e:
+        logger.error(f"Error loading track record: {e}")
+
+def request_track_record_from_server():
+    """Request the current track record from the central server"""
+    offline_mode = getattr(config, 'OFFLINE_MODE', False) or '--offline_mode' in sys.argv
+    
+    if not offline_mode and sio.connected:
+        try:
+            sio.emit('get_track_record')
+            logger.info("Requested current track record from central server")
+            return True
+        except Exception as e:
+            logger.error(f"Error requesting track record from server: {e}")
+            return False
+    else:
+        logger.info("Cannot request track record from server (offline mode or not connected)")
+        return False
+
+# Function to save track record
+def save_track_record():
+    """Save track record to JSON file."""
+    try:
+        with open(TRACK_RECORD_FILE, 'w') as f:
+            json.dump({'track_record': track_record}, f)
+        logger.info(f"Saved track record: {track_record:.3f}s")
+    except Exception as e:
+        logger.error(f"Error saving track record: {e}")
+
+
 class I2CSystemChecker:
     """Class for checking I2C system components with improved detection from diag.py"""
     
@@ -147,7 +236,7 @@ class I2CSystemChecker:
                     import hid
                     devices = hid.enumerate(0x04D8, 0x00DD)
                     if devices:
-                        print(f"MCP2221A detected via HID library")
+                        print("MCP2221A detected via HID library")
                         is_mcp2221a_available = True
                         connection_type = "MCP2221A"
                     else:
@@ -563,7 +652,8 @@ class LightSensor:
             return
 
         current_light_level = self.stable_average # Use the more responsive stable_average
-        if current_light_level is None: return
+        if current_light_level is None:
+            return
 
         # Adjust adaptive_trigger_percentage based on light stability/level
         # More stable/higher light might allow a less sensitive percentage (higher number)
@@ -791,9 +881,12 @@ def initialize_hardware(num_lanes=6, tca_from_checker=None):
                 channel_i2c_bus = tca_from_checker[channel] # Get I2C interface for this MUX channel
                 
                 channel_scan_devices = []
-                while not channel_i2c_bus.try_lock(): time.sleep(0.01)
-                try: channel_scan_devices = channel_i2c_bus.scan()
-                finally: channel_i2c_bus.unlock()
+                while not channel_i2c_bus.try_lock():
+                    time.sleep(0.01)
+                try:
+                    channel_scan_devices = channel_i2c_bus.scan()
+                finally:
+                    channel_i2c_bus.unlock()
 
                 if not channel_scan_devices:
                     logger.info(f"AppHW: No I2C devices on checker's MUX channel {channel}.")
@@ -836,9 +929,12 @@ def initialize_hardware(num_lanes=6, tca_from_checker=None):
                 logger.info("AppHW: Created new I2C bus for direct sensor check.")
 
                 devices = []
-                while not app_level_i2c_bus.try_lock(): time.sleep(0.01)
-                try: devices = app_level_i2c_bus.scan()
-                finally: app_level_i2c_bus.unlock()
+                while not app_level_i2c_bus.try_lock():
+                    time.sleep(0.01)
+                try:
+                    devices = app_level_i2c_bus.scan()
+                finally:
+                    app_level_i2c_bus.unlock()
 
                 if not devices:
                     logger.error("✗ AppHW: No I2C devices found on manually created bus for direct sensor.")
@@ -877,7 +973,7 @@ def initialize_hardware(num_lanes=6, tca_from_checker=None):
 def initialize_display():
     """Initialize the display for showing race results on a specific monitor."""
     global screen, font
-    logger.info(f"Initializing display...")
+    logger.info("Initializing display...")
     
     # Attempt to get PYGAME_DISPLAY_INDEX from config, default to 0 if not found
     display_index_to_use = getattr(config, 'PYGAME_DISPLAY_INDEX', 0)
@@ -947,7 +1043,7 @@ def initialize_display():
         return False
 
 def display_on_screen(race_results_list, current_formatted_race_id, num_lanes_to_display=6):
-    """Display live race results on screen - ENHANCED VERSION WITH PROPER DNF HANDLING"""
+    """Display live race results on screen - ENHANCED VERSION WITH TIME AND WEATHER"""
     global screen, font
     if not screen or not font:
         logger.warning("Display not available, cannot show results on screen.")
@@ -955,11 +1051,21 @@ def display_on_screen(race_results_list, current_formatted_race_id, num_lanes_to
 
     screen.fill((0, 0, 0))  # Black background
 
-    # Create smaller font for header line and speed text
-    small_font = pygame.font.Font("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 18)
-    speed_font = pygame.font.Font("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 18)  # Smaller font for speed
+    # Create smaller font for header line
+    small_font = pygame.font.Font("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 16)  # Even smaller for more info
 
-    # Display Race ID, status, and reset instruction on the same line (SMALLER TEXT)
+    # Get weather data (cached)
+    temp, humidity = get_weather_data()
+    
+    # Get current date and time
+    current_datetime = datetime.now()
+    current_date = current_datetime.strftime("%m/%d/%Y")  # Format as MM/DD/YYYY
+    current_time = current_datetime.strftime("%I:%M:%S%f")[:-5] + " " + current_datetime.strftime("%p")
+
+    # Build track record string
+    track_record_str = f"Track Record: {track_record:.3f}s" if track_record is not None else "Track Record: --"
+
+    # Display enhanced header with Race ID, status, date, time, weather, track record, and reset instruction
     if current_formatted_race_id:
         try:
             # Get race status from global variable if available
@@ -968,20 +1074,24 @@ def display_on_screen(race_results_list, current_formatted_race_id, num_lanes_to
             # Check if we're running in offline mode
             offline_mode = getattr(config, 'OFFLINE_MODE', False) or '--offline_mode' in sys.argv
             
+            # Build weather string
+            weather_str = f"Dallas,Texas | {temp}°F {humidity}%" if temp != '--' else "Dallas,Texas | --"
+            
+            # Build the comprehensive header with date included
             if race_status == "Finished" and offline_mode:
-                combined_text = f"Race: {current_formatted_race_id} - Status: {race_status} - Press 'R' to start new race"
+                combined_text = f"Race: {current_formatted_race_id} | Status: {race_status} | Date: {current_date} | Time: {current_time} | {weather_str} | {track_record_str} | Press 'R' to start new race"
             else:
-                combined_text = f"Race: {current_formatted_race_id} - Status: {race_status}"
+                combined_text = f"Race: {current_formatted_race_id} | Status: {race_status} | Date: {current_date} | Time: {current_time} | {weather_str} | {track_record_str}"
                 
             text_surface = small_font.render(combined_text, True, (255, 255, 255))
             screen.blit(text_surface, (SCREEN_WIDTH // 2 - text_surface.get_width() // 2, 5))
         except Exception as e:
             logger.error(f"Error rendering race ID: {e}")
 
-    # Calculate layout
+    # Calculate layout (adjust top_offset for smaller header)
     column_width = SCREEN_WIDTH // num_lanes_to_display
-    top_offset = 30  # Reduced from 40 since header text is smaller
-    row_spacing = 3   # Reduced spacing to fit gap timing
+    top_offset = 25  # Reduced slightly since header font is smaller
+    row_spacing = 3
     
     # Blinking effect for winner (changes every 500ms)
     blink_cycle = int(time.time() * 2) % 2  # 0 or 1, changes every 500ms
@@ -1000,20 +1110,14 @@ def display_on_screen(race_results_list, current_formatted_race_id, num_lanes_to
         y = top_offset
 
         # *** SIMPLE DNF DETECTION - ONLY AFTER RACE TIMEOUT ***
-        # DNF ONLY happens when max race duration has expired AND lane never finished
-        # During normal racing: show normal display with live timers
         is_any_dnf = False
-        
-        # Only check for DNF if race is complete AND we have result data
-        if result and race_in_progress == False:  # Race must be finished to have DNF
-            # True DNF: place is None AND time is None (never triggered sensor)
-            # Timeout DNF: place is None AND time is timeout value (timed out)
+        if result and not race_in_progress:  # Race must be finished to have DNF
             is_any_dnf = result[1] is None
 
-        # Background color - WINNER BLINKS REGARDLESS OF RACE STATUS
+        # Background color - WINNER BLINKS CONTINUOUSLY ONCE THEY WIN
         is_winner = result and result[1] == 1
         
-        if is_winner:  # Winner always blinks (removed race_complete condition)
+        if is_winner:  # Winner blinks continuously once they have place #1
             if blink_cycle:
                 bg_color = (50, 50, 50)  # Original gray background
                 border_color = (255, 255, 255)  # White border
@@ -1022,7 +1126,7 @@ def display_on_screen(race_results_list, current_formatted_race_id, num_lanes_to
                 bg_color = (0, 150, 0)  # Dark green
                 border_color = (255, 255, 255)  # White border
                 border_width = 3
-        else:  # All other lanes (finished or racing) stay gray
+        else:  # All other lanes stay gray
             bg_color = (50, 50, 50)  # Gray for everyone except winner
             border_color = None
             border_width = 0
@@ -1034,95 +1138,83 @@ def display_on_screen(race_results_list, current_formatted_race_id, num_lanes_to
         if result and result[1] == 1 and border_color:
             pygame.draw.rect(screen, border_color, (x + 5, y, column_width - 10, SCREEN_HEIGHT - y - 10), border_width)
 
-        # *** ENHANCED STATUS DOT LOGIC WITH DNF RED DOT ***
+        # *** STATUS DOT LOGIC ***
         dot_radius = 10
         dot_center_x = x + column_width // 2
         dot_center_y = y + dot_radius + 5
         
-        # Determine dot color and behavior based on lane status
-        if is_winner:  # Winner always blinks (removed race_complete condition)
-            # Winner gets special blinking green dot
+        if is_winner:  # Winner gets blinking green dot
             if blink_cycle:
                 dot_color = (0, 255, 0)   # Bright green
-                dot_radius_current = 10.5   # Slightly larger
+                dot_radius_current = 12   # Slightly larger
             else:
                 dot_color = (0, 200, 0)   # Slightly dimmer green
                 dot_radius_current = 10
         elif is_any_dnf:  
-            # DNF (Did Not Finish or Timed Out) - RED (static, no blinking)
-            dot_color = (255, 0, 0)  # Red
+            dot_color = (255, 0, 0)  # Red for DNF
             dot_radius_current = dot_radius
         elif result and result[1] is not None and result[1] > 1:  
-            # Finished but not winner - ORANGE (static, no blinking)
-            dot_color = (255, 165, 0)  # Orange
+            dot_color = (255, 165, 0)  # Orange for finished
             dot_radius_current = dot_radius
         elif result and result[2] is not None and result[1] is None:  
-            # Still racing (has time but no place) - YELLOW (static)
-            dot_color = (255, 255, 0)  # Yellow
+            dot_color = (255, 255, 0)  # Yellow for racing
             dot_radius_current = dot_radius
         else:  
-            # Default/unknown state - WHITE
-            dot_color = (255, 255, 255)  # White
+            dot_color = (255, 255, 255)  # White for default
             dot_radius_current = dot_radius
             
         pygame.draw.circle(screen, dot_color, (dot_center_x, dot_center_y), dot_radius_current)
 
         y += dot_radius * 2 + 5
 
-        # Lane label (centered)
+        # Lane label
         lane_label_surface = font.render(f"Lane {lane_number}", True, (255, 255, 255))
         lane_label_rect = lane_label_surface.get_rect(centerx=x + column_width // 2)
         lane_label_rect.y = y
         screen.blit(lane_label_surface, lane_label_rect)
         y += lane_label_surface.get_height() + row_spacing
 
-        # *** PLACE NUMBER - SHOW "DNF" FOR DNF LANES ***
+        # Place number
         large_font = pygame.font.Font("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 60)
-        if is_any_dnf:  # DNF case - show "DNF" instead of place number
+        if is_any_dnf:
             place_text = "DNF"
-            place_color = (255, 0, 0)  # Red for DNF
+            place_color = (255, 0, 0)
         elif result and result[1] is not None:
             place_text = str(result[1])
-            if is_winner:  # Winner gets blinking text (removed race_complete condition)
-                if blink_cycle:
-                    place_color = (255, 255, 0)  # Bright yellow
-                else:
-                    place_color = (255, 255, 255)  # White
+            if is_winner:
+                place_color = (255, 255, 0) if blink_cycle else (255, 255, 255)
             else:
-                place_color = (255, 255, 0)  # Yellow for other finished places
+                place_color = (255, 255, 0)
         else:
             place_text = "---"
-            place_color = (255, 255, 255)  # White for racing
+            place_color = (255, 255, 255)
             
         place_surface = large_font.render(place_text, True, place_color)
         place_rect = place_surface.get_rect(center=(x + column_width // 2, y + 30))
         screen.blit(place_surface, place_rect)
         y += place_surface.get_height() + row_spacing
 
-        # *** RUNNING TIME - SHOW "DNF" FOR DNF LANES ***
-        if is_any_dnf:  # DNF case - show "DNF" instead of time
+        # Running time
+        if is_any_dnf:
             time_surface = font.render("DNF", True, (255, 0, 0))
         elif result and result[2] is not None:
             if result[1] is not None:
-                # Lane finished - show final time
-                if is_winner:  # Winner gets blinking time text (removed race_complete condition)
+                if is_winner:
                     time_color = (255, 255, 0) if blink_cycle else (0, 255, 0)
                     time_surface = font.render(f"WINNER: {result[2]:.3f}s", True, time_color)
                 else:
                     time_surface = font.render(f"Final: {result[2]:.3f}s", True, (0, 255, 0))
             else:
-                # Lane still racing - show live time
                 time_surface = font.render(f"Live: {result[2]:.3f}s", True, (255, 255, 0))
         else:
             time_surface = font.render("Time: ---", True, (255, 255, 255))
 
-        # Center the time text
         time_rect = time_surface.get_rect(center=(x + column_width // 2, y + 15))
         screen.blit(time_surface, time_rect)
         y += time_surface.get_height() + row_spacing
 
-        # *** GAP TIMING - SHOW "DNF" FOR DNF LANES, SKIP FOR WINNERS ***
-        if is_any_dnf:  # DNF case - show "DNF" instead of gap time
+        # Gap timing
+        if is_any_dnf:
             gap_surface = small_font.render("DNF", True, (255, 0, 0))
             gap_rect = gap_surface.get_rect(center=(x + column_width // 2, y + 10))
             screen.blit(gap_surface, gap_rect)
@@ -1130,32 +1222,30 @@ def display_on_screen(race_results_list, current_formatted_race_id, num_lanes_to
         elif result and result[1] is not None and result[1] > 1 and result[2] is not None and winner_time is not None:
             gap_time = result[2] - winner_time
             gap_text = f"+{gap_time:.3f}s"
-            gap_color = (255, 140, 0)  # Orange color for gap timing
-            gap_surface = small_font.render(gap_text, True, gap_color)  # Use small_font for gap text
+            gap_color = (255, 140, 0)
+            gap_surface = small_font.render(gap_text, True, gap_color)
             gap_rect = gap_surface.get_rect(center=(x + column_width // 2, y + 10))
             screen.blit(gap_surface, gap_rect)
             y += gap_surface.get_height() + row_spacing
         elif is_winner:
-            # For winner, add some spacing to keep layout consistent
-            y += small_font.get_height() + row_spacing  # Use small_font height for consistent spacing
+            y += small_font.get_height() + row_spacing
 
-        # *** SPEED - SHOW "DNF" FOR DNF LANES ***
-        if is_any_dnf:  # DNF case - show "DNF" instead of speed
+        # Speed
+        speed_font = pygame.font.Font("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 18)
+        if is_any_dnf:
             speed_surface = speed_font.render("DNF", True, (255, 0, 0))
         elif result and result[3] is not None:
-            if is_winner:  # Winner gets blinking speed text (removed race_complete condition)
+            if is_winner:
                 speed_color = (255, 255, 0) if blink_cycle else (255, 255, 255)
             else:
                 speed_color = (255, 255, 255)
-            speed_surface = speed_font.render(f"Speed: {result[3]:.2f} mph", True, speed_color)  # Use speed_font
+            speed_surface = speed_font.render(f"Speed: {result[3]:.2f} mph", True, speed_color)
         else:
-            speed_surface = speed_font.render("Speed: ---", True, (255, 255, 255))  # Use speed_font
+            speed_surface = speed_font.render("Speed: ---", True, (255, 255, 255))
 
-        # Center the speed text
         speed_rect = speed_surface.get_rect(center=(x + column_width // 2, y + 10))
         screen.blit(speed_surface, speed_rect)
 
-    # *** CRITICAL: ALWAYS CALL pygame.display.flip() TO UPDATE THE SCREEN ***
     pygame.display.flip()
 
 def calculate_speed(race_time_seconds):
@@ -1307,7 +1397,7 @@ def display_race_end_prompt():
 
 def finish_race_action():
     """Action to take when a race finishes (all cars crossed or timeout)."""
-    global race_in_progress
+    global race_in_progress, track_record
     
     if not race_in_progress:
         logger.warning("Attempted to finish a race, but no race was in progress.")
@@ -1388,6 +1478,21 @@ def finish_race_action():
         if lane_num not in finished_lane_numbers:
             results_list.append((lane_num, None, None, None))  # True DNF - never started/finished
             logger.info(f"Lane {lane_num} marked as TRUE DNF (never finished)")
+
+    # Check for new track record
+    track_record_updated = False
+    for result in results_list:
+        lane_num, place, elapsed_time, speed = result
+        # Only consider finished racers (not DNF), valid times over 2 seconds
+        if place is not None and elapsed_time is not None and elapsed_time >= 2.0:
+            if track_record is None or elapsed_time < track_record:
+                track_record = elapsed_time
+                track_record_updated = True
+                logger.info(f"New track record set: {track_record:.3f}s by Lane {lane_num}!")
+    
+    # Save if the track record was updated
+    if track_record_updated:
+        save_track_record()
 
     # Ensure results_list is sorted by lane for consistent display
     results_list.sort(key=lambda x: x[0])
@@ -1492,7 +1597,7 @@ def check_finish_conditions(num_lanes_active=6):
         finish_race_action()
     elif (current_event_time - start_time) > (max_race_duration_config + 2) and race_in_progress:
         # Safety net: if race is still marked as in_progress well after timeout (e.g. a logic glitch)
-        logger.warning(f"Race appears to have exceeded timeout significantly but not all lanes marked. Forcing finish.")
+        logger.warning("Race appears to have exceeded timeout significantly but not all lanes marked. Forcing finish.")
         # Ensure all remaining None lanes are marked DNF before finishing
         for lane_idx in range(num_lanes_active):
             if finish_times[lane_idx] is None or finish_times[lane_idx] == float('inf'):
@@ -1522,7 +1627,8 @@ def reset_race_state():
         if font:
             try:
                 ready_text = "FINISH GATE READY"
-                if formatted_race: ready_text = f"{formatted_race} - READY"
+                if formatted_race:
+                    ready_text = f"{formatted_race} - READY"
 
                 text_surface = font.render(ready_text, True, (200, 200, 200))
                 screen.blit(text_surface, (SCREEN_WIDTH // 2 - text_surface.get_width() // 2, SCREEN_HEIGHT // 2 - text_surface.get_height() // 2))
@@ -1535,14 +1641,35 @@ def reset_race_state():
     send_component_status() # Send updated status after reset
 
 
+
+
 # --- Socket.IO Event Handlers ---
+
 @sio.event
 def connect():
     logger.info("Socket.IO: Successfully connected to central server.")
     sio.emit('register_gate', {'gate_type': 'finish_gate', 'gate_id': getattr(config, 'GATE_ID', 'FinishGate_Default')})
     send_component_status()
+    
+    # Request current track record from server after connecting
+    request_track_record_from_server()
+
+
+    
+    # Request current track record from server
+    offline_mode = getattr(config, 'OFFLINE_MODE', False) or '--offline_mode' in sys.argv
+    if not offline_mode:
+        sio.emit('get_track_record')
+        logger.info("Requested current track record from central server")
     # Request current race state from server upon connection, or wait for server commands
     # sio.emit('get_current_race_state') # If server supports this
+
+
+
+
+
+
+
 
 @sio.event
 def connect_error(data):
@@ -1553,6 +1680,23 @@ def connect_error(data):
 def disconnect():
     logger.info("Socket.IO: Disconnected from central server.")
     # Handle state if connection is lost (e.g., pause operations, attempt reconnect)
+
+@sio.on('track_record_update')
+def on_track_record_update(data):
+    """Receive track record updates from the central server"""
+    global track_record
+    if 'track_record' in data and data['track_record'] is not None:
+        server_record = data['track_record']
+        
+        # Always update from server if we have no local record, or if server record is faster
+        if track_record is None or server_record < track_record:
+            track_record = server_record
+            logger.info(f"Updated track record from server: {track_record:.3f}s")
+            save_track_record()  # Save to local storage
+        else:
+            logger.info(f"Server track record ({server_record:.3f}s) is not faster than local record ({track_record:.3f}s)")
+    else:
+        logger.info("Received track record update with no valid record from server")
 
 @sio.on('race_command') # Generic command handler from server
 def on_race_command(data):
@@ -1675,7 +1819,7 @@ def main_loop(num_lanes_in_use=6):
                             if not race_in_progress and offline_mode:
                                 logger.info("SPACE key: Initiating local race start.")
                                 # Create a local race ID
-                                formatted_race = f"LocalTest_{int(time.time())}"
+                                formatted_race = f"Test_{int(time.time())}"
                                 start_race_action()
                             elif not race_in_progress and not offline_mode:
                                 logger.info("SPACE key: Cannot start local race in online mode. Wait for server commands.")
@@ -1698,7 +1842,7 @@ def main_loop(num_lanes_in_use=6):
                             logger.info("R key: Initiating gate reset.")
                             reset_race_state()
                             if offline_mode:
-                                formatted_race = f"LocalTest_{int(time.time())}"
+                                formatted_race = f"Test_{int(time.time())}"
                                 start_race_action()
 
             # Core race logic: check for finishes if a race is active
@@ -1815,51 +1959,41 @@ if __name__ == "__main__":
     parser.add_argument('--debug', action='store_true', help='Enable DEBUG level logging.')
     args = parser.parse_args()
 
-    # Ensure logger and sio are configured and accessible globally before this point
-    # Example:
-    # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    # logger = logging.getLogger(__name__)
-    # sio = socketio.Client(logger=True, engineio_logger=True)
-    # CENTRAL_SERVER_URL = config.CENTRAL_SERVER_URL # Ensure this is loaded
-
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
         for handler in logging.getLogger().handlers:
             handler.setLevel(logging.DEBUG)
         logger.info("DEBUG logging enabled.")
-        if 'sio' in globals() and sio: # Check if sio is defined
+        if 'sio' in globals() and sio:
             sio.eio.logger = True
         else:
             logger.warning("Socket.IO client 'sio' not defined globally, cannot enable its engineio logger.")
 
     # Sync system time with NTP before any other initialization
-    
     sync_system_time()
 
-    NUMBER_OF_LANES = min(max(1, args.lanes), 6) # Clamp lanes between 1 and 6
+    # Load local track record first (before any other initialization)
+    load_track_record()
+
+    NUMBER_OF_LANES = min(max(1, args.lanes), 6)
     logger.info(f"Finish Gate System starting for {NUMBER_OF_LANES} lanes.")
 
     # --- Hardware Initialization Sequence ---
 
     # Step 1: Set up Blinka Environment using I2CSystemChecker
-    # This is crucial for 'board' and 'busio' imports to work correctly later.
     logger.info("MAIN: Step 1 - Detecting connection type and setting Blinka environment...")
-    connection_type = I2CSystemChecker.detect_connection_type() # Assumes I2CSystemChecker is defined
+    connection_type = I2CSystemChecker.detect_connection_type()
     if not connection_type:
         logger.critical("MAIN: Failed to establish Blinka environment via I2CSystemChecker. Exiting.")
-        sys.exit(1) # Essential to exit if this fails for reliable hardware access
+        sys.exit(1)
     logger.info(f"MAIN: Blinka environment set for connection type: {connection_type}")
 
-    # Step 2: Run I2CSystemChecker's MUX/sensor detection.
-    # This is primarily for its diagnostic output and to attempt to get a working TCA MUX object
-    # that its "better written" internal logic might have successfully initialized.
+    # Step 2: Run I2CSystemChecker's MUX/sensor detection
     logger.info("MAIN: Step 2 - Running I2CSystemChecker.detect_multiplexer_and_sensors() for diagnostics and to get MUX object...")
-    # The I2CSystemChecker.detect_multiplexer_and_sensors() method, as per your class structure,
-    # returns: (diagnostic_sensor_status_list, tca_object_it_created, mux_type_string)
     _diagnostic_sensor_report_list, tca_object_from_checker, _diagnostic_mux_type_str = I2CSystemChecker.detect_multiplexer_and_sensors()
 
     # Add sensor check
-    sensors_found = sum(1 for sensor_info in _diagnostic_sensor_report_list if sensor_info[1])  # Count True in the middle position
+    sensors_found = sum(1 for sensor_info in _diagnostic_sensor_report_list if sensor_info[1])
     if sensors_found < NUMBER_OF_LANES:
         logger.warning(f"MAIN: Only {sensors_found} out of {NUMBER_OF_LANES} required BH1750 sensors were detected by I2CSystemChecker.")
         if sensors_found == 0:
@@ -1867,52 +2001,38 @@ if __name__ == "__main__":
     else:
         logger.info(f"MAIN: All {NUMBER_OF_LANES} required BH1750 sensors were detected by I2CSystemChecker.")
     
-    
-    
     if tca_object_from_checker:
         logger.info(f"MAIN: I2CSystemChecker's diagnostic run provided a MUX object (type: {_diagnostic_mux_type_str}). This will be passed to the main hardware initializer.")
     else:
-        logger.warning("MAIN: I2CSystemChecker's diagnostic run did NOT provide a MUX object (it was not found or an error occurred during its internal initialization). The main hardware initializer will attempt manual setup.")
+        logger.warning("MAIN: I2CSystemChecker's diagnostic run did NOT provide a MUX object. The main hardware initializer will attempt manual setup.")
 
-    # Step 3: Call your main hardware initialization function.
-    # It should be modified to accept 'tca_from_checker' as an argument.
-    # (Ensure 'initialize_hardware' function is defined in your script as discussed previously,
-    #  capable of using a passed TCA object or doing its own full setup).
+    # Step 3: Call main hardware initialization function
     logger.info("MAIN: Step 3 - Initializing application hardware using checker's MUX (if available) or attempting manual setup...")
-    # The `initialize_hardware` function needs to be the modified one that accepts `tca_from_checker`.
     if not initialize_hardware(num_lanes=NUMBER_OF_LANES, tca_from_checker=tca_object_from_checker):
         logger.critical("MAIN: Application hardware initialization failed. The system may not function correctly or will exit.")
-        # Depending on severity, you might want to exit here.
-        # For now, allowing to proceed to see if other parts can be tested, as per original comment.
-        # sys.exit(1)
     else:
         logger.info("MAIN: Application hardware initialization successful.")
-        if light_sensors: # Check if light_sensors got populated
+        if light_sensors:
              logger.info(f"MAIN: Active LightSensor objects for lanes: {list(light_sensors.keys())}")
         else:
              logger.warning("MAIN: Application hardware init reported success, but no LightSensor objects were created.")
 
-
-    # (Optional) Run other purely diagnostic methods from I2CSystemChecker if the --test_hw flag is set
+    # (Optional) Run additional diagnostic methods if --test_hw flag is set
     if args.test_hw:
         logger.info("MAIN: Step 3b (Optional based on --test_hw) - Running additional I2C System Checker diagnostics...")
-        I2CSystemChecker.check_libraries() # Assumes this is a static method or callable
-        I2CSystemChecker.detect_i2c_buses() # This uses command line i2cdetect
-        # Note: detect_multiplexer_and_sensors was already called, but calling again would repeat its specific diagnostics.
+        I2CSystemChecker.check_libraries()
+        I2CSystemChecker.detect_i2c_buses()
         logger.info("MAIN: Additional I2C diagnostics (from --test_hw) complete.")
 
-
     # Initialize display
-    # Ensure initialize_display function is defined in your script
     logger.info("MAIN: Initializing display...")
-    if not initialize_display(): # Assuming initialize_display returns True/False
+    if not initialize_display():
         logger.error("MAIN: Failed to initialize display.")
-        # Decide if this is critical enough to exit
 
     # Optional: Run sensor calibration routine if commanded
     if args.calibrate_sensors:
         logger.info("MAIN: Sensor calibration mode activated from command line.")
-        if not light_sensors: # Check if sensors were actually initialized
+        if not light_sensors:
             logger.error("MAIN: Cannot run calibration: No light sensors were initialized by initialize_hardware.")
         else:
             logger.info("--- Interactive Sensor Calibration ---")
@@ -1920,11 +2040,10 @@ if __name__ == "__main__":
             for lane_num, sensor_obj in sorted(light_sensors.items()):
                 logger.info(f"\nCalibrating Lane {lane_num}:")
                 if hasattr(sensor_obj, 'calibrate') and callable(sensor_obj.calibrate):
-                    if not sensor_obj.calibrate(): # Assuming calibrate returns True/False
+                    if not sensor_obj.calibrate():
                         all_calibrated_successfully = False
                         logger.error(f"MAIN: Calibration failed for Lane {lane_num}.")
                     else:
-                        # Ensure these attributes exist before trying to format them
                         stable_avg_str = f"{sensor_obj.stable_average:.2f}" if hasattr(sensor_obj, 'stable_average') and sensor_obj.stable_average is not None else "N/A"
                         dyn_thresh_str = f"{sensor_obj.dynamic_threshold:.2f}" if hasattr(sensor_obj, 'dynamic_threshold') and sensor_obj.dynamic_threshold is not None else "N/A"
                         trig_perc_str = f"{sensor_obj.adaptive_trigger_percentage:.1f}" if hasattr(sensor_obj, 'adaptive_trigger_percentage') and sensor_obj.adaptive_trigger_percentage is not None else "N/A"
@@ -1933,23 +2052,23 @@ if __name__ == "__main__":
                     logger.error(f"MAIN: Sensor object for Lane {lane_num} does not have a callable 'calibrate' method.")
                     all_calibrated_successfully = False
             
-            if all_calibrated_successfully and light_sensors: # Check light_sensors again
+            if all_calibrated_successfully and light_sensors:
                 logger.info("\n--- Live Monitoring Post-Calibration (Ctrl+C to exit calibration mode) ---")
                 try:
                     while True:
-                        print("-" * 30) # Adjusted width
+                        print("-" * 30)
                         for lane_num, sensor_obj in sorted(light_sensors.items()):
                             try:
                                 if hasattr(sensor_obj, 'sensor') and hasattr(sensor_obj.sensor, 'lux'):
                                     lux = sensor_obj.sensor.lux
-                                    if hasattr(sensor_obj, 'update'): sensor_obj.update(lux) # Update internal states
+                                    if hasattr(sensor_obj, 'update'):
+                                        sensor_obj.update(lux)
                                     
                                     triggered_str = ""
                                     if hasattr(sensor_obj, 'is_triggered') and callable(sensor_obj.is_triggered):
                                         if sensor_obj.is_triggered(lux):
                                             triggered_str = ' <<<TRIGGERED>>>'
                                     
-                                    # Safe attribute access for printing
                                     s_avg = getattr(sensor_obj, 'stable_average', 0) or 0
                                     d_thr = getattr(sensor_obj, 'dynamic_threshold', 0) or 0
                                     a_trig_p = getattr(sensor_obj, 'adaptive_trigger_percentage', 0.0) or 0.0
@@ -1966,32 +2085,30 @@ if __name__ == "__main__":
                 logger.error("MAIN: Calibration not fully successful or no sensors to monitor live.")
 
         logger.info("MAIN: Calibration routine finished.")
-        # sys.exit(0) # Optionally exit after calibration if it's a dedicated mode
 
     # Connect to Socket.IO server (unless in offline mode)
     if not args.offline_mode:
         try:
-            # Ensure CENTRAL_SERVER_URL is defined
             if 'CENTRAL_SERVER_URL' in globals() and CENTRAL_SERVER_URL:
                 logger.info(f"MAIN: Attempting to connect to Socket.IO server at {CENTRAL_SERVER_URL}...")
-                if 'sio' in globals() and sio: # Check if sio is defined
+                if 'sio' in globals() and sio:
                     sio.connect(CENTRAL_SERVER_URL, transports=['websocket'])
+                    # Track record will be requested automatically in the connect() event handler
+                    logger.info("MAIN: Connected to Socket.IO server. Track record will be requested automatically.")
                 else:
                     logger.error("MAIN: Socket.IO client 'sio' is not defined. Cannot connect.")
             else:
                 logger.error("MAIN: CENTRAL_SERVER_URL is not defined. Cannot connect to Socket.IO server.")
         except socketio.exceptions.ConnectionError as e:
-            logger.error(f"MAIN: Socket.IO connection failed: {e}. Running in OFFLINE mode if applicable, or check server.")
-        except NameError: # Handles if sio or CENTRAL_SERVER_URL were not defined
+            logger.error(f"MAIN: Socket.IO connection failed: {e}. Using local track record only.")
+        except NameError:
             logger.error("MAIN: Socket.IO client 'sio' or 'CENTRAL_SERVER_URL' not defined. Cannot attempt connection.")
-        except Exception as e_sio_connect: # Catch other potential errors during connect
-            logger.error(f"MAIN: An unexpected error occurred during Socket.IO connection: {e_sio_connect}")
+        except Exception as e_sio_connect:
+            logger.error(f"MAIN: An unexpected error occurred during Socket.IO connection: {e_sio_connect}. Using local track record only.")
     else:
-        logger.info("MAIN: Offline mode enabled. Skipping Socket.IO server connection.")
-
+        logger.info("MAIN: Offline mode enabled. Using local track record only.")
 
     # Start the main application loop
-    # Ensure main_loop and cleanup_resources functions are defined in your script
     try:
         if 'main_loop' in globals() and callable(main_loop):
             logger.info("MAIN: Starting main application loop...")
@@ -2008,4 +2125,4 @@ if __name__ == "__main__":
         else:
             logger.warning("MAIN: cleanup_resources function not defined. Skipping cleanup.")
         logger.info("MAIN: Application has shut down.")
-        sys.exit(0) # Ensure a clean exit
+        sys.exit(0)
