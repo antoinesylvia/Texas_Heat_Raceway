@@ -34,7 +34,7 @@ global_motor = None
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='Raspberry Pi BuildHAT Swing Gate Controller')
-parser.add_argument('--demo', action='store_true', help='Run in demo mode automatically')
+parser.add_argument('--demo-mode', action='store_true', help='Run demo mode testing race stages')  # ← ADD THIS
 args = parser.parse_args()
 
 # Runtime variables (not from config)
@@ -1660,8 +1660,7 @@ def confirm_gate_ready():
         time.sleep(0.1)  # Check every 100ms
     
     
-    # Play prelaunch sound
-    play_prelaunch_sound(0)
+    
 
     #Notify server that gate is ready for countdown
     send_gate_status_update("Countdown")
@@ -1856,7 +1855,102 @@ def reset_gate_state():
 
 #handle sounds
 
+def run_demo(motor):
+    """
+    Demo mode that tests the initial race stages for the start gate.
+    Runs through: initialize → ready → countdown → open gate
+    """
+    global DEMO_RUNNING
+    
+    print("\n" + "=" * 60)
+    print("🏁 START GATE DEMO MODE 🏁")
+    print("=" * 60)
+    print("Testing the initial race stages that the start gate anchors:")
+    print("1. Initialize gate for new race")
+    print("2. Confirm gate ready") 
+    print("3. Start countdown sequence")
+    print("4. Open gate for race")
+    print("=" * 60)
+    
+    try:
+        # Stage 1: Initialize gate for new race
+        print("\n🔧 STAGE 1: Initializing gate for new race...")
+        print("-" * 40)
+        
+        if not initialize_gate_for_new_race():
+            print("❌ Demo failed at initialization stage")
+            return False
+        
+        print("✅ Stage 1 complete: Gate initialization successful")
+        while pygame.mixer.get_busy():
+            time.sleep(0.1)
+        
+        # Stage 2: Confirm gate ready
+        print("\n🎯 STAGE 2: Confirming gate ready...")
+        print("-" * 40)
+        while pygame.mixer.get_busy():
+            time.sleep(0.1)
+        
+        confirm_gate_ready()
+        print("✅ Stage 2 complete: Gate confirmed ready")
+        
+        # Wait for audio to complete before moving to next stage
+        while pygame.mixer.get_busy():
+            time.sleep(0.1)
+        
+        
+        # Stage 3: Start countdown sequence
+        print("\n⏱️ STAGE 3: Starting countdown sequence...")
+        print("-" * 40)
+        
+        start_countdown_sequence()
+        print("✅ Stage 3 complete: Countdown sequence finished")
+        while pygame.mixer.get_busy():
+            time.sleep(0.1)
+        
+        # Stage 4: Open gate for race
+        print("\n🚪 STAGE 4: Opening gate for race...")
+        print("-" * 40)
+        
+        open_gate_for_race()
+        print("✅ Stage 4 complete: Gate opened for race")
+        time.sleep(7)
 
+        display_race_finished()
+        print("✅ Final stage complete: Gate closed for race")
+        
+        # Demo completion
+        print("\n" + "=" * 60)
+        print("🎉 DEMO COMPLETED SUCCESSFULLY! 🎉")
+        print("=" * 60)
+        print("All start gate race stages tested successfully:")
+        print("✅ Gate initialization")
+        print("✅ Ready confirmation with audio")
+        print("✅ Countdown sequence with visual/audio")
+        print("✅ Gate opening for race start")
+        print("=" * 60)
+        
+        # Wait a moment to let user see the completion message
+        time.sleep(3)
+        
+        # Show restart instructions
+        print("\n🔄 DEMO READY TO RESTART")
+        print("-" * 30)
+        print("Press the LEGO remote Left Center button to run demo again")
+        print("Or select a different option from the main menu")
+        print("-" * 30)
+        
+        return True
+        
+    except Exception as e:
+        print(f"\n❌ Demo failed with error: {e}")
+        print("Demo terminated due to unexpected error")
+        return False
+    
+    finally:
+        # Always reset the demo flag when finished
+        DEMO_RUNNING = False
+        print("DEBUG: Demo completed, DEMO_RUNNING flag reset to False")
 
 
 
@@ -1976,7 +2070,7 @@ def display_main_menu():
         "Default speed:", f"{DEFAULT_SPEED}%",
         "Demo cycles:", f"{DEMO_CYCLES}"))
     
-    # Main menu
+    #menu
     print("-" * 80)
     print("=" * 30 + " MAIN MENU " + "=" * 32)
     print("-" * 80)
@@ -2155,6 +2249,8 @@ def main():
     
     # Start position monitor
     start_position_monitor(motor)
+
+    
     
     
     print("\nConnecting to central server...")
@@ -2181,6 +2277,22 @@ def main():
     remote_thread = threading.Thread(target=start_remote_control_thread, args=(remote_loop,), daemon=True)
     remote_thread.start()
     print("Remote control ready. Press Left Center button to run demo.")
+
+     # ✅ ADD THIS: Check for demo-mode CLI argument
+    if args.demo_mode:
+        print("\n🚀 AUTO-STARTING DEMO MODE (--demo-mode argument detected)")
+        print("Please hit LEGO controller Left Center button to start demo...")
+        print("Press Ctrl+C to exit demo mode and continue to main menu")
+        
+        try:
+            # Wait for button press to start demo
+            while True:
+                time.sleep(0.1)  # Wait for remote button press
+                # The remote button handler will automatically trigger run_demo() when pressed
+        except KeyboardInterrupt:
+            print("\n\nDemo mode interrupted by user")
+            print("Continuing to main menu...")
+            time.sleep(1)
     
     # Main program loop
     while True:
