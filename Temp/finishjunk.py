@@ -55,6 +55,17 @@ TRACK_RECORD_FILE = "track_record.json"
 
 placement_counter = 1  # Starts from 1st place
 
+race_state_from_server = {
+    'status': 'Unknown',
+    'race_number': None,
+    'formatted_race': None,
+    'car_names': [],
+    'countdown_duration': 5,
+    'start_time': None
+}
+
+
+
 def parse_arguments():
         parser = argparse.ArgumentParser(
             description='I2C Sensor Calibration and Testing Tool',
@@ -1698,6 +1709,15 @@ def on_track_record_update(data):
     else:
         logger.info("Received track record update with no valid record from server")
 
+
+
+
+
+
+
+
+
+
 @sio.on('race_command') # Generic command handler from server
 def on_race_command(data):
     global current_race_number, formatted_race # Allow modification by server commands
@@ -1722,6 +1742,66 @@ def on_race_command(data):
     # Add more commands as needed: e.g., 'abort_race', 'set_num_lanes'
     else:
         logger.warning(f"Received unknown race command: {command}")
+
+
+@sio.on('race_state_update')
+def on_race_state_update(data):
+    """Handle race state updates from the central server"""
+    global race_state_from_server, current_race_number, formatted_race
+    
+    logger.info(f"Received race state update from server: {data}")
+    race_state_from_server = data
+    
+    current_status = data.get('status')
+    race_number = data.get('race_number')
+    formatted_race_from_data = data.get('formatted_race')
+    
+    # Handle different race states
+    if current_status == 'Initialization':
+        logger.info(f"Server race state: INITIALIZATION for race {formatted_race_from_data}")
+        # Initialize finish gate for new race
+        current_race_number = race_number
+        formatted_race = formatted_race_from_data
+        initialize_for_new_race()
+        
+    elif current_status == 'Ready':
+        logger.info(f"Server race state: READY for race {formatted_race_from_data}")
+        # Confirm ready state
+        display_ready_state()
+        
+    elif current_status == 'Countdown':
+        logger.info(f"Server race state: COUNTDOWN for race {formatted_race_from_data}")
+        # Prepare sensors for incoming race
+        logger.info("Preparing sensors for incoming race...")
+        
+    elif current_status == 'Racing':
+        logger.info(f"Server race state: RACING for race {formatted_race_from_data}")
+        # Start race timing
+        current_race_number = race_number
+        formatted_race = formatted_race_from_data
+        start_race_action()
+        
+    elif current_status == 'Placement':
+        logger.info(f"Server race state: PLACEMENT for race {formatted_race_from_data}")
+        # Show placement/results (race results are already being displayed)
+        logger.info("Race in placement phase - displaying results")
+        
+    elif current_status == 'Finished':
+        logger.info(f"Server race state: FINISHED for race {formatted_race_from_data}")
+        # Race complete, display final results
+        logger.info("Race officially finished")
+        
+    elif current_status == 'Intermission':
+        logger.info(f"Server race state: INTERMISSION")
+        # Break period between races
+        logger.info("Race system in intermission")
+        
+    elif current_status == 'Reset':
+        logger.info(f"Server race state: RESET")
+        # Reset to prepare for next race
+        reset_race_state()
+
+
 
 # --- Socket.IO Emitters ---
 def send_race_state_to_server(status_str, winning_lane=None, results=None):
@@ -1782,6 +1862,145 @@ def save_race_results_to_server(race_start_perf_time, processed_results_list):
         logger.info(f"Sent race results for '{formatted_race}' to server for saving.")
     except Exception as e:
         logger.error(f"Error sending race results for saving via Socket.IO: {e}")
+
+
+def initialize_for_new_race():
+    """Initialize finish gate for a new race"""
+    global race_in_progress, start_time, finish_times, placement_counter, current_results
+    
+    logger.info("Initializing finish gate for new race...")
+    
+    # Reset race state
+    race_in_progress = False
+    start_time = None
+    placement_counter = 1
+    current_results = {}
+    
+    # Reset finish times for all lanes
+    for i in range(len(finish_times)):
+        finish_times[i] = None
+    
+    # Calibrate all active light sensors
+    calibration_success = True
+    if not light_sensors:
+        logger.error("No light sensors available for calibration. Race cannot start accurately.")
+        calibration_success = False
+    else:
+        logger.info("Calibrating light sensors for new race...")
+        for lane, sensor_obj in light_sensors.items():
+            logger.info(f"Initializing sensor for Lane {lane}...")
+            try:
+                if hasattr(sensor_obj, 'calibrate') and callable(sensor_obj.calibrate):
+                    if not sensor_obj.calibrate():
+                        logger.error(f"Failed to initialize sensor for Lane {lane}")
+                        calibration_success = False
+                    else:
+                        # Log calibration success details
+                        stable_avg = getattr(sensor_obj, 'stable_average', 'N/A')
+                        dyn_thresh = getattr(sensor_obj, 'dynamic_threshold', 'N/A')
+                        logger.info(f"Lane {lane} sensor calibrated - Baseline: {stable_avg:.2f} lux, Threshold: {dyn_thresh:.2f} lux")
+                else:
+                    logger.error(f"Sensor for Lane {lane} does not have calibrate method")
+                    calibration_success = False
+            except Exception as e:
+                logger.error(f"Error calibrating sensor for Lane {lane}: {e}")
+                calibration_success = False
+    
+    # Update display
+    display_ready_state()
+    
+    # Send status to server
+    if calibration_success:
+        logger.info("✅ Finish gate initialization successful - all sensors calibrated")
+        send_component_status()  # This will report "OK" status
+        return True
+    else:
+        logger.error("❌ Finish gate initialization failed - sensor calibration issues")
+        send_component_status()  # This will report error status
+        return False
+
+def display_ready_state():
+    """Display ready state on screen"""
+    global screen, font, formatted_race
+    
+    if not screen or not font:
+        logger.warning("Display not available for ready state")
+        return
+        
+    try:
+        # Dark green background to indicate ready state
+        screen.fill((0, 100, 0))
+        
+        # Main ready message
+        ready_text = f"READY FOR RACE {formatted_race}" if formatted_race else "READY FOR RACE"
+        text_surface = font.render(ready_text, True, (255, 255, 255))
+        text_rect = text_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50))
+        screen.blit(text_surface, text_rect)
+        
+        # Add sensor status indicator
+        num_sensors = len(light_sensors)
+        sensor_text = f"Sensors Active: {num_sensors}"
+        sensor_surface = font.render(sensor_text, True, (200, 200, 200))
+        sensor_rect = sensor_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20))
+        screen.blit(sensor_surface, sensor_rect)
+        
+        # Add ready indicator
+        status_text = "FINISH GATE READY"
+        status_surface = font.render(status_text, True, (255, 255, 0))  # Yellow text
+        status_rect = status_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 60))
+        screen.blit(status_surface, status_rect)
+        
+        pygame.display.flip()
+        logger.info(f"Ready state displayed on screen for race: {formatted_race or 'Unknown'}")
+        
+    except Exception as e:
+        logger.error(f"Error displaying ready state: {e}")
+
+def confirm_finish_gate_ready():
+    """Confirm finish gate is ready and all systems operational"""
+    global light_sensors
+    
+    logger.info("Confirming finish gate ready status...")
+    
+    # Check if sensors are initialized and ready
+    if not light_sensors:
+        logger.error("No light sensors initialized - finish gate not ready")
+        return False
+    
+    # Check each sensor's readiness
+    sensors_ready = 0
+    for lane, sensor_obj in light_sensors.items():
+        try:
+            if hasattr(sensor_obj, 'is_ready') and sensor_obj.is_ready:
+                sensors_ready += 1
+                logger.debug(f"Lane {lane} sensor confirmed ready")
+            else:
+                logger.warning(f"Lane {lane} sensor not ready")
+        except Exception as e:
+            logger.error(f"Error checking readiness of sensor for Lane {lane}: {e}")
+    
+    # Check display system
+    display_ready = screen is not None and font is not None
+    if not display_ready:
+        logger.warning("Display system not ready")
+    
+    # Overall readiness assessment
+    total_expected_sensors = len(light_sensors)
+    readiness_percentage = (sensors_ready / total_expected_sensors * 100) if total_expected_sensors > 0 else 0
+    
+    if sensors_ready == total_expected_sensors and display_ready:
+        logger.info(f"✅ Finish gate confirmed ready - {sensors_ready}/{total_expected_sensors} sensors operational, display ready")
+        display_ready_state()
+        return True
+    elif sensors_ready > 0:
+        logger.warning(f"⚠️ Finish gate partially ready - {sensors_ready}/{total_expected_sensors} sensors operational ({readiness_percentage:.1f}%)")
+        display_ready_state()
+        return True
+    else:
+        logger.error("❌ Finish gate not ready - critical systems not operational")
+        return False
+
+
 
 
 def main_loop(num_lanes_in_use=6):
