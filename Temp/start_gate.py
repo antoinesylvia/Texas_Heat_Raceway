@@ -1896,8 +1896,7 @@ def handle_remote_button(port, value):
     # Debug info for every button event
     print(f"DEBUG: Button event - port={port}, value=0x{value:02x}, time_since_last={time_since_last:.2f}s, DEMO_RUNNING={DEMO_RUNNING}")
     
-    # Only handle relevant button press events
-    #Launcher
+    # LEFT CENTER BUTTON - Run Demo/Race
     if port == remote.PORT_LEFT and value == 0x7F:  # Left Center button pressed
         print(f"Button event received: Left Center pressed, {time_since_last:.2f}s since last press")
         
@@ -1907,9 +1906,6 @@ def handle_remote_button(port, value):
         # Super aggressive debouncing - ignore ALL presses within BUTTON_DEBOUNCE_TIME
         if time_since_last < BUTTON_DEBOUNCE_TIME:
             print(f"IGNORED: Button press too soon after previous press ({time_since_last:.2f}s < {BUTTON_DEBOUNCE_TIME}s)")
-            
-            # Even when ignoring, redisplay the menu to keep the UI consistent
-            #display_main_menu()
             return
         
         # Check if a demo is already running
@@ -1947,11 +1943,50 @@ def handle_remote_button(port, value):
             # Display menu when there's an error too
             display_main_menu()
     
-    elif port == remote.PORT_LEFT and value == 0x00:
-        # Only log button releases, don't process them
+    # RIGHT CENTER BUTTON - Exit Program (instead of port reselection)
+    elif port == remote.PORT_RIGHT and value == 0x7F:  # Right Center button pressed
+        print("Right Center button pressed - Exiting program...")
         
-        print("Button released (ignored)")
-
+        # Debounce this button too
+        if time_since_last < BUTTON_DEBOUNCE_TIME:
+            print(f"IGNORED: Exit button press too soon after previous press ({time_since_last:.2f}s < {BUTTON_DEBOUNCE_TIME}s)")
+            return
+        
+        # Update timestamp
+        LAST_BUTTON_PRESS = current_time
+        
+        print("EXIT BUTTON PRESS ACCEPTED - Shutting down...")
+        
+        try:
+            # Clean shutdown sequence
+            if global_motor:
+                print("Stopping motor...")
+                safe_stop_motor(global_motor)
+            
+            print("Stopping position monitor...")
+            stop_position_monitor()
+            
+            print("Goodbye!")
+            
+            # Exit the program
+            import sys
+            sys.exit(0)
+            
+        except Exception as e:
+            print(f"Error during shutdown: {e}")
+            import sys
+            sys.exit(1)
+    
+    # BUTTON RELEASE EVENTS (ignore but log)
+    elif port == remote.PORT_LEFT and value == 0x00:
+        print("Left Center button released (ignored)")
+    
+    elif port == remote.PORT_RIGHT and value == 0x00:
+        print("Right Center button released (ignored)")
+    
+    else:
+        # Log any other button events for debugging
+        print(f"Other button event: port={port}, value=0x{value:02x} (ignored)")
 
 def start_remote_control_thread(loop):
     """Start the remote control in a separate thread."""
@@ -2001,9 +2036,10 @@ def display_main_menu():
     print("Position updates will appear above this menu")
     print("-" * 80)
     print("\nSelect mode:")
-    print("1. Run demo")
-    print("2. Quit")
+    print("1. Run demo | Hit Left Red Center button on remote")
+    print("2. Quit | Hit Right Red Center button on remote")
     print("Waiting for input...", flush=True)
+    print()
 
 
 
@@ -2203,15 +2239,7 @@ def main():
         print("Please hit LEGO controller Left Center button to start demo...")
         print("Press Ctrl+C to exit demo mode and continue to main menu")
         
-        try:
-            # Wait for button press to start demo
-            while True:
-                time.sleep(0.1)  # Wait for remote button press
-                # The remote button handler will automatically trigger run_demo() when pressed
-        except KeyboardInterrupt:
-            print("\n\nDemo mode interrupted by user")
-            print("Continuing to main menu...")
-            time.sleep(1)
+        
     
     # Main program loop
     while True:
