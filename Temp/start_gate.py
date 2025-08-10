@@ -573,6 +573,9 @@ def initialize_motor(motor):
        safe_stop_motor(motor)
        time.sleep(0.5)
       
+       motor.plimit(0.85)            # Gentle 70% power limit
+       motor.pwmparams(0.15, 0.1)   # Reset to default PWM thresholds
+       
        # Check if motor is still connected
        if not is_motor_connected(motor):
            print("Motor was disconnected during initialization.")
@@ -651,10 +654,12 @@ def initialize_motor(motor):
       
        # Apply holding power to maintain closed position
        if CLOSED_HOLD_POWER > 0:
+           print("hello0")
            print(f"Applying closed holding power ({CLOSED_HOLD_POWER}%) to prevent movement...")
            # Direction may need adjustment based on your setup
            hold_direction = 1  # Try -1 if this doesn't work
            motor.start(CLOSED_HOLD_POWER * hold_direction)
+           
            time.sleep(0.2)  # Brief pause to ensure power is applied
            print("1")
           
@@ -738,9 +743,7 @@ def open_gate(motor):
             hold_direction = -1 if GATE_OPEN_ANGLE < 0 else 1
             motor.start(HOLD_POWER * hold_direction)
             
-        # Reset power settings to defaults AFTER applying holding power
-        motor.plimit(0.9)            # Reset to default power limit (90%)
-        motor.pwmparams(0.15, 0.1)   # Reset to default PWM thresholds
+        
         
         # Print gate opened message with timestamp
         print(f"Gate opened at {current_time}!")
@@ -763,6 +766,9 @@ def close_gate(motor):
         return False
       
     try:
+        # Reset power settings to defaults AFTER applying holding power
+        motor.plimit(0.85)            # Reset to default power limit (90%)
+        motor.pwmparams(0.15, 0.1)   # Reset to default PWM thresholds
         print(f"Closing gate to {GATE_CLOSED_ANGLE} degrees...")
       
         # Important: Force direct method that worked previously
@@ -804,6 +810,7 @@ def close_gate(motor):
       
         # Apply holding power to keep gate closed against pressure from cars
         if CLOSED_HOLD_POWER > 0:
+            print("hello_close_gate!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             # Direction depends on your setup - adjust sign as needed
             # Positive value provides clockwise resistance
             # Negative value provides counter-clockwise resistance
@@ -1488,12 +1495,14 @@ def close_gate_enhanced(motor):
                 pass
         
         # Always reapply holding power after calibration with maximum strength
+        print("hello_close_gate_enhanced!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         logger.info(f"Applying strong holding power ({CLOSED_HOLD_POWER}%) to maintain position...")
         hold_direction = 1  # Default direction (may need to be -1 depending on setup)
         motor.start(CLOSED_HOLD_POWER * hold_direction)  # Apply continuous power
         time.sleep(0.2)  # Brief pause to ensure power is applied
         logger.debug("Strong holding power applied after repositioning")
     else:
+        print("hello_close_gate_enhanced2!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         # Even if position is good, verify that holding power is still active
         # This extra check ensures holding power is maintained
         logger.info(f"Gate position within acceptable range ({current_pos}°)")
@@ -1599,8 +1608,7 @@ def initialize_gate_for_new_race():
         try:
             logger.info("Motor verified working - positioning to closed position...")
             
-            # Display closed status on Matrix if available
-            #display_gate_status_on_matrix(is_open=False)
+            
             
             # Check current position (using proven demo logic)
             current_pos = global_motor.get_position()
@@ -1617,6 +1625,7 @@ def initialize_gate_for_new_race():
                 
                 # Immediately reapply holding power
                 if CLOSED_HOLD_POWER > 0:
+                    print("hello")
                     hold_direction = 1  # Default direction (may need to be -1 depending on setup)
                     logger.info(f"Applying closed holding power ({CLOSED_HOLD_POWER}%) to maintain position...")
                     global_motor.start(CLOSED_HOLD_POWER * hold_direction)  # Apply continuous power
@@ -1626,6 +1635,7 @@ def initialize_gate_for_new_race():
                 
                 # Even if position is good, ensure holding power is active
                 if CLOSED_HOLD_POWER > 0:
+                    print("hello2")
                     hold_direction = 1
                     logger.info(f"Reinforcing holding power ({CLOSED_HOLD_POWER}%) to maintain position...")
                     global_motor.start(CLOSED_HOLD_POWER * hold_direction)
