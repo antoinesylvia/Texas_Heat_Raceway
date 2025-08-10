@@ -185,10 +185,11 @@ def refresh_config():
         "GATE_TRANSITION": cfg.get("gate_transition", 0.27),            # Default from config
         "OPEN_SPEED": cfg.get("open_speed", 100),                       # Default from config
         "CLOSE_SPEED": cfg.get("close_speed", 10),                      # Default from config
-        "OPEN_RAMP_TIME": cfg.get("open_ramp_time", 1.0),              # Default from config
-        "CLOSE_RAMP_TIME": cfg.get("close_ramp_time", 15.0),           # Default from config
-        "GATE_OPEN_WAIT_TIME": cfg.get("gate_open_wait_time", 5.0),    # Default from config
+        "OPEN_RAMP_TIME": cfg.get("open_ramp_time", 1.0),               # Default from config
+        "CLOSE_RAMP_TIME": cfg.get("close_ramp_time", 15.0),            # Default from config
+        "GATE_OPEN_WAIT_TIME": cfg.get("gate_open_wait_time", 5.0),     # Default from config
         "HOLD_POWER": cfg.get("hold_power", 100),                       # Default from config
+        "MOTOR_POWER_LIMIT": cfg.get("motor_power_limit", 0.85),                # Default from config
         "CLOSED_HOLD_POWER": cfg.get("closed_hold_power", 100),         # Default from config
         "DEFAULT_SPEED": cfg.get("default_speed", 40),                  # Default from config
         "DEMO_CYCLES": cfg.get("demo_cycles", 1),                       # Default from config
@@ -562,7 +563,7 @@ def stop_position_monitor():
 
 def initialize_motor(motor):
    """Initialize the motor by setting it to the closed position."""
-   global GATE_CLOSED_ANGLE, GATE_OPEN_ANGLE
+   global GATE_CLOSED_ANGLE, GATE_OPEN_ANGLE, MOTOR_POWER_LIMIT
   
    if motor is None:
        print("No motor connected.")
@@ -573,7 +574,7 @@ def initialize_motor(motor):
        safe_stop_motor(motor)
        time.sleep(0.5)
       
-       motor.plimit(0.85)            # Gentle 70% power limit
+       motor.plimit(MOTOR_POWER_LIMIT)            # Gentle 70% power limit
        motor.pwmparams(0.15, 0.1)   # Reset to default PWM thresholds
        
        # Check if motor is still connected
@@ -705,7 +706,7 @@ def ramp_speed(motor, target_speed, ramp_time=1.0):
 
 def open_gate(motor):
     """Open the gate to GATE_OPEN_ANGLE degrees."""
-    global HOLD_POWER
+    global HOLD_POWER, MOTOR_POWER_LIMIT
     
     if not is_motor_connected(motor):
         print("Motor disconnected - cannot open gate.")
@@ -759,7 +760,7 @@ def open_gate(motor):
 
 def close_gate(motor):
     """Close the gate to GATE_CLOSED_ANGLE degrees with verification."""
-    global CLOSED_HOLD_POWER
+    global CLOSED_HOLD_POWER, MOTOR_POWER_LIMIT
   
     if not is_motor_connected(motor):
         print("Motor disconnected - cannot close gate.")
@@ -767,7 +768,7 @@ def close_gate(motor):
       
     try:
         # Reset power settings to defaults AFTER applying holding power
-        motor.plimit(0.85)            # Reset to default power limit (90%)
+        motor.plimit(MOTOR_POWER_LIMIT)            # Reset to default power limit (90%)
         motor.pwmparams(0.15, 0.1)   # Reset to default PWM thresholds
         print(f"Closing gate to {GATE_CLOSED_ANGLE} degrees...")
       
@@ -817,9 +818,12 @@ def close_gate(motor):
             hold_direction = 1  # Default direction (may need to be -1 depending on setup)  # noqa: F841
           
             print(f"Applying closed holding power ({CLOSED_HOLD_POWER}%) to maintain position...")
-            #motor.start(CLOSED_HOLD_POWER * hold_direction)  # Apply continuous power
+            motor.start(CLOSED_HOLD_POWER * hold_direction)  # Apply continuous power
             #print("2")
       
+        # ✅ ADD THIS: Update matrix to show closed status
+        display_gate_status_on_matrix(is_open=False)
+        
         # Print gate closed message with timestamp
         print(f"Gate closed at {current_time}!")
         return True
@@ -1429,97 +1433,6 @@ def test_components():
     
     return components
 
-def close_gate_enhanced(motor):
-    """Enhanced gate closing with improved holding power management and position verification."""
-    global CLOSED_HOLD_POWER, GATE_CLOSED_ANGLE
-    
-    if not is_motor_connected(motor):
-        logger.error("Motor disconnected - cannot close gate.")
-        return False
-    
-    try:
-        # Stop the holding power before attempting to close
-        logger.info("Releasing holding power before closing...")
-        motor.stop()
-        time.sleep(0.2)  # Brief pause after stopping
-        
-    except Exception as e:
-        logger.error(f"Error during hold release: {e}")
-        motor.stop()  # Make sure we stop the motor even on error
-    
-    logger.info("Closing gate now...")
-    if not close_gate(motor):
-        logger.error("Gate closing failed due to motor disconnection.")
-        return False
-    
-    # Update matrix to show closed status
-    display_gate_status_on_matrix(is_open=False)
-        
-    # Check if still connected before continuing
-    if not is_motor_connected(motor):
-        logger.error("Motor disconnected during gate closing.")
-        return False
-
-    # ===== IMPROVED HOLDING POWER MANAGEMENT =====
-    # After closing, verify position but minimize adjustments
-    
-    current_pos = motor.get_position()
-    logger.info(f"Verifying closed position (currently at {current_pos}°)...")
-    
-    # Only attempt calibration if position is significantly off 
-    # This is a more aggressive threshold to avoid unnecessary adjustments
-    if abs(current_pos - GATE_CLOSED_ANGLE) > 5:  # Only calibrate if more than 5 degrees off
-        logger.warning(f"Position significantly off target! Needs adjustment from {current_pos}° to {GATE_CLOSED_ANGLE}°")
-        
-        # Temporarily stop holding power for accurate calibration
-        logger.info("Releasing holding power for repositioning...")
-        motor.stop()
-        time.sleep(0.2)
-        
-        # Now run calibration with higher power for a decisive movement
-        try:
-            logger.info("Moving to correct closed position...")
-            motor.run_to_position(GATE_CLOSED_ANGLE, 50, blocking=True)  # Use higher power right away
-            time.sleep(0.3)  # Give time to settle
-            
-            # Check final position
-            final_pos = motor.get_position()
-            logger.info(f"Repositioning complete - now at {final_pos}° (target: {GATE_CLOSED_ANGLE}°)")
-        
-        except Exception as e:
-            logger.error(f"Error during repositioning: {e}")
-            # Make sure motor is stopped
-            try:
-                motor.stop()
-            except:  # noqa: E722
-                pass
-        
-        # Always reapply holding power after calibration with maximum strength
-        print("hello_close_gate_enhanced!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        logger.info(f"Applying strong holding power ({CLOSED_HOLD_POWER}%) to maintain position...")
-        hold_direction = 1  # Default direction (may need to be -1 depending on setup)
-        motor.start(CLOSED_HOLD_POWER * hold_direction)  # Apply continuous power
-        time.sleep(0.2)  # Brief pause to ensure power is applied
-        logger.debug("Strong holding power applied after repositioning")
-    else:
-        print("hello_close_gate_enhanced2!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        # Even if position is good, verify that holding power is still active
-        # This extra check ensures holding power is maintained
-        logger.info(f"Gate position within acceptable range ({current_pos}°)")
-        
-        # Strengthen holding power to ensure it doesn't drift
-        logger.info(f"Reinforcing holding power ({CLOSED_HOLD_POWER}%) to prevent drift...")
-        hold_direction = 1  # Default direction (may need to be -1 depending on setup)
-        motor.start(CLOSED_HOLD_POWER * hold_direction)  # Apply continuous power
-        time.sleep(0.1)  # Brief pause to ensure power is applied
-        logger.debug("Holding power reinforced")
-
-    logger.info("Enhanced gate closing sequence complete")
-    time.sleep(0.5)  # Brief pause for stability
-    # ===== END IMPROVED HOLDING POWER MANAGEMENT =====
-    
-    return True
-
 
 
 #central
@@ -1828,7 +1741,7 @@ def display_race_finished():
     try:
         # Close the gate using enhanced closing logic
         if global_motor and is_motor_connected(global_motor):
-            if close_gate_enhanced(global_motor):
+            if close_gate(global_motor):
                 logger.info("Gate successfully closed after race completion")
             else:
                 logger.error("Failed to close gate after race")
