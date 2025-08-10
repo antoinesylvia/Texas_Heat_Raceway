@@ -1600,7 +1600,7 @@ def initialize_gate_for_new_race():
             logger.info("Motor verified working - positioning to closed position...")
             
             # Display closed status on Matrix if available
-            display_gate_status_on_matrix(is_open=False)
+            #display_gate_status_on_matrix(is_open=False)
             
             # Check current position (using proven demo logic)
             current_pos = global_motor.get_position()
@@ -1648,7 +1648,7 @@ def initialize_gate_for_new_race():
 
 
 def confirm_gate_ready():
-    #Stasge 2: Ready
+    #Stage 2: Ready
     """Confirm gate is ready position with audio feedback"""
     logger.info("Start gate confirmed ready for race")
     
@@ -1863,7 +1863,7 @@ def run_demo(motor):
     global DEMO_RUNNING
     
     print("\n" + "=" * 60)
-    print("🏁 START GATE DEMO MODE 🏁")
+    print("START GATE DEMO MODE")
     print("=" * 60)
     print("Testing the initial race stages that the start gate anchors:")
     print("1. Initialize gate for new race")
@@ -1874,7 +1874,7 @@ def run_demo(motor):
     
     try:
         # Stage 1: Initialize gate for new race
-        print("\n🔧 STAGE 1: Initializing gate for new race...")
+        print("\n STAGE 1: Initializing gate for new race...")
         print("-" * 40)
         
         if not initialize_gate_for_new_race():
@@ -1886,7 +1886,7 @@ def run_demo(motor):
             time.sleep(0.1)
         
         # Stage 2: Confirm gate ready
-        print("\n🎯 STAGE 2: Confirming gate ready...")
+        print("\n STAGE 2: Confirming gate ready...")
         print("-" * 40)
         while pygame.mixer.get_busy():
             time.sleep(0.1)
@@ -1900,16 +1900,15 @@ def run_demo(motor):
         
         
         # Stage 3: Start countdown sequence
-        print("\n⏱️ STAGE 3: Starting countdown sequence...")
+        print("\n STAGE 3: Starting countdown sequence...")
         print("-" * 40)
         
         start_countdown_sequence()
         print("✅ Stage 3 complete: Countdown sequence finished")
-        while pygame.mixer.get_busy():
-            time.sleep(0.1)
+        
         
         # Stage 4: Open gate for race
-        print("\n🚪 STAGE 4: Opening gate for race...")
+        print("\n STAGE 4: Opening gate for race...")
         print("-" * 40)
         
         open_gate_for_race()
@@ -1921,7 +1920,7 @@ def run_demo(motor):
         
         # Demo completion
         print("\n" + "=" * 60)
-        print("🎉 DEMO COMPLETED SUCCESSFULLY! 🎉")
+        print("DEMO COMPLETED SUCCESSFULLY!")
         print("=" * 60)
         print("All start gate race stages tested successfully:")
         print("✅ Gate initialization")
@@ -1934,7 +1933,7 @@ def run_demo(motor):
         time.sleep(3)
         
         # Show restart instructions
-        print("\n🔄 DEMO READY TO RESTART")
+        print("\n DEMO READY TO RESTART")
         print("-" * 30)
         print("Press the LEGO remote Left Center button to run demo again")
         print("Or select a different option from the main menu")
@@ -2080,10 +2079,7 @@ def display_main_menu():
     print("-" * 80)
     print("\nSelect mode:")
     print("1. Run demo")
-    print("2. Interactive control")
-    print("3. Change port")
-    print("4. Reset motor position to 0")
-    print("5. Quit")
+    print("2. Quit")
     print("Waiting for input...", flush=True)
 
 
@@ -2280,7 +2276,7 @@ def main():
 
      # ✅ ADD THIS: Check for demo-mode CLI argument
     if args.demo_mode:
-        print("\n🚀 AUTO-STARTING DEMO MODE (--demo-mode argument detected)")
+        print("\n AUTO-STARTING DEMO MODE (--demo-mode argument detected)")
         print("Please hit LEGO controller Left Center button to start demo...")
         print("Press Ctrl+C to exit demo mode and continue to main menu")
         
@@ -2366,7 +2362,7 @@ def main():
         print("(Position updates will appear above this menu)")
         print("-" * 50 + "\n")
 
-        mode = input("Select mode:\n1. Run demo\n2. Interactive control\n3. Change port\n4. Reset motor position to 0\n5. Quit\nChoice: ").strip()
+        mode = input("Select mode:\n1. Run demo\n2. Quit\nChoice: ").strip()
         
         if mode == '1':
             # Set flag to indicate demo is running
@@ -2377,103 +2373,9 @@ def main():
                 # Always reset the flag when we're done
                 print("DEBUG: Setting DEMO_RUNNING=False")
                 #DEMO_RUNNING = False
-        elif mode == '2':
-            # Stop the global position monitor during interactive mode
-            # since it will interfere with command input
-            stop_position_monitor()
-            interactive_mode(motor)
-            # Restart position monitor after exiting interactive mode
-            start_position_monitor(motor)
-        elif mode == '3':
-            # Clean up before changing port
-            print("Stopping motor...")
-            stop_position_monitor()
-            safe_stop_motor(motor)
-            
-            # Re-detect and select port
-            connected_ports = detect_motors()
-            selected_port = select_port(connected_ports)
-            print(f"\nUsing motor on port {selected_port}")
-            motor = connect_motor(selected_port)
-            global_motor = motor  # Update global reference
-            
-            # Check if the connection succeeded
-            if motor is None:
-                print("Failed to connect to motor on the selected port.")
-                continue
-                
-            if not initialize_motor(motor):
-                print("Failed to initialize motor.")
-                continue
-                
-            # Restart position monitor
-            start_position_monitor(motor)
         
-        # Replace the reset position code block with this simpler approach:
-        elif mode == '4':
-            print("Resetting motor to position 0...")
-            print("Press [Enter] to stop, or use arrow keys â¬ï¸â¡ï¸ to change direction.")
 
-            if not is_motor_connected(motor):
-                print("Motor disconnected - cannot move to 0.")
-            else:
-                try:
-                    import threading
-                    import sys
-                    import tty
-                    import termios
-
-                    cancel_flag = {'stop': False}
-                    direction_flag = {'reverse': True}  # Start in reverse (-360)
-
-                    def key_listener():
-                        fd = sys.stdin.fileno()
-                        old_settings = termios.tcgetattr(fd)
-                        tty.setcbreak(fd)
-                        try:
-                            while not cancel_flag['stop']:
-                                key = sys.stdin.read(1)
-                                if key == '\n':  # Enter key
-                                    cancel_flag['stop'] = True
-                                elif key == '\x1b':  # Arrow key prefix
-                                    if sys.stdin.read(1) == '[':
-                                        arrow = sys.stdin.read(1)
-                                        if arrow in ['C', 'D']:  # Right or Left
-                                            direction_flag['reverse'] = not direction_flag['reverse']
-                                            print(f"\nâï¸ Direction toggled. Now turning: {'reverse' if direction_flag['reverse'] else 'forward'}")
-                        finally:
-                            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-
-                    threading.Thread(target=key_listener, daemon=True).start()
-
-                    current_pos = motor.get_position()
-                    print(f"Starting position: {current_pos} degrees")
-
-                    while abs(current_pos) > 100:
-                        if cancel_flag['stop']:
-                            print("Unwinding stopped by user.")
-                            return
-
-                        print(f"Unwinding... current: {current_pos}")
-                        step = -360 if direction_flag['reverse'] else 360
-                        motor.run_for_degrees(step, speed=80, blocking=True)
-                        time.sleep(0.3)
-                        current_pos = motor.get_position()
-
-                    print("Fine-tuning to 0 degrees...")
-                    motor.run_to_position(0, speed=50, blocking=True)
-                    time.sleep(0.3)
-
-                    final_pos = motor.get_position()
-                    print(f"Final position before reset: {final_pos} degrees")
-
-                    motor.set_degrees_counted(0)
-                    print("Motor encoder has been reset to 0 degrees.")
-
-                except Exception as e:
-                    print(f"Error during motor reset: {e}")
-
-        elif mode == '5':
+        elif mode == '2':
             print("Exiting program...")
             stop_position_monitor()
             break
