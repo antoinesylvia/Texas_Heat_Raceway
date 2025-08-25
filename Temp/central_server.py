@@ -642,20 +642,16 @@ def get_records():
         logging.error(f"Error retrieving race records: {e}")
         return jsonify({'error': 'Failed to retrieve race records'}), 500
 
-@app.route('/update_car_names', methods=['POST'])
-def update_car_names():
-    data = request.json
-    logging.info(f"Received car names update: {data}")
-    car_names = data['car_names']
-    race_state['car_names'] = car_names
-    logging.info(f"Car names updated: {race_state['car_names']}")
-    return jsonify({'status': 'success'})
 
-# Update your @app.route('/update_component_status', methods=['POST']) 
-@app.route('/update_component_status', methods=['POST'])
-def update_component_status():
+
+def update_component_status(data=None):
+    """Handle component status updates (called by both HTTP and Socket.IO)"""
     global race_state
-    data = request.json
+    
+    # Handle both Socket.IO data and HTTP request data
+    if data is None:
+        data = request.json if request else {}
+    
     logging.info(f"Received component status update: {data}")
     timestamp = data['timestamp']
     components = data['components']
@@ -702,7 +698,7 @@ def update_component_status():
                     raise Exception("Failed to establish database connection")
         except Exception as e:
             logging.error(f"Error updating component status: {e}")
-            return jsonify({'error': 'Failed to update component status'}), 500
+            return {'error': 'Failed to update component status'}
     else:
         # Test mode logic - similar changes
         all_ok = all(status == 'OK' for status in components.values())
@@ -712,7 +708,7 @@ def update_component_status():
         else:
             socketio.emit('components_ready', {'ready': False, 'message': 'Waiting for all components...'})
 
-    return jsonify({'status': 'success', 'race_state': race_state['status'], 'components_ready': race_state.get('components_ready', False)})
+    return {'status': 'success', 'race_state': race_state['status'], 'components_ready': race_state.get('components_ready', False)}
 
 @app.route('/get_component_status', methods=['GET'])
 def get_component_status():
@@ -764,31 +760,32 @@ def reset():
     
     return jsonify({'status': 'success', 'message': 'Reset completed. Waiting for user action.'})
 
-@app.route('/user_action', methods=['POST'])
 def handle_user_action(action_type=None):
+    """Handle user actions (called by both HTTP and Socket.IO)"""
     global race_state
     if action_type is None:
-        action_type = request.json.get('action_type')
+        # For backward compatibility with any remaining HTTP calls
+        action_type = request.json.get('action_type') if request else None
+    
     current_state = race_state['status']
     
     # ✅ NEW: Start initialization when components are ready
     if action_type == 'start_race' and race_state.get('components_ready', False):
         if update_race_state('Initialization'):
             logging.info("User action: Started race initialization.")
-            return jsonify({'status': 'success', 'new_state': 'Initialization', 'message': 'Race initialization started!'})
+            return {'status': 'success', 'new_state': 'Initialization', 'message': 'Race initialization started!'}
         else:
-            return jsonify({'status': 'error', 'message': 'Failed to start initialization'}), 500
+            return {'status': 'error', 'message': 'Failed to start initialization'}
     
     # ✅ CORRECTED: Skip intermission (goes directly to Reset, not Finished)
     elif action_type == 'skip_intermission' and current_state == 'Intermission':
         # Stop intermission audio
         
-        
         if update_race_state('Reset'):  # ✅ CHANGED: Skip directly to Reset
             logging.info("User action: Skipped intermission, moving directly to Reset state.")
-            return jsonify({'status': 'success', 'new_state': 'Reset', 'message': 'Intermission skipped - ready for next race!'})
+            return {'status': 'success', 'new_state': 'Reset', 'message': 'Intermission skipped - ready for next race!'}
         else:
-            return jsonify({'status': 'error', 'message': 'Failed to skip intermission'}), 500
+            return {'status': 'error', 'message': 'Failed to skip intermission'}
     
     # ✅ REMOVED: No longer need reset_race action since skip_intermission goes directly to Reset
     # The natural flow is: Finished → Intermission → (skip or wait) → Reset
@@ -800,21 +797,21 @@ def handle_user_action(action_type=None):
         
         if update_race_state('Initialization'):
             logging.info("User action: Transitioned from Reset to Initialization.")
-            return jsonify({'status': 'success', 'new_state': 'Initialization', 'message': 'System initialized - waiting for components...'})
+            return {'status': 'success', 'new_state': 'Initialization', 'message': 'System initialized - waiting for components...'}
         else:
-            return jsonify({'status': 'error', 'message': 'Failed to initialize'}), 500
+            return {'status': 'error', 'message': 'Failed to initialize'}
     
     # ✅ EXISTING: Start countdown (still needed for manual override)
     elif action_type == 'start_countdown' and current_state == 'Ready':
         if update_race_state('Countdown'):
             logging.info("User action: Started countdown.")
-            return jsonify({'status': 'success', 'new_state': 'Countdown', 'message': 'Countdown started!'})
+            return {'status': 'success', 'new_state': 'Countdown', 'message': 'Countdown started!'}
         else:
-            return jsonify({'status': 'error', 'message': 'Failed to start countdown'}), 500
+            return {'status': 'error', 'message': 'Failed to start countdown'}
     
     else:
         logging.warning(f"Invalid user action: {action_type} in state {current_state}")
-        return jsonify({'status': 'error', 'message': f'Invalid action "{action_type}" for current state "{current_state}"'}), 400
+        return {'status': 'error', 'message': f'Invalid action "{action_type}" for current state "{current_state}"'}
 
 @app.route('/get_weather_config')
 def get_weather_config():
@@ -911,8 +908,32 @@ def handle_gate_status_update(data):
     else:
         logging.warning(f"🚫 Invalid transition: {gate_type} cannot advance {current_state} → {new_status}")
 
+# Add after line 800, after existing @socketio.on handlers:
 
 
+@socketio.on('component_status_update')
+def handle_component_status_socket(data):
+    """Handle component status updates via Socket.IO"""
+    update_component_status(data)  # ✅ Just call the function
+    logging.info(f"Component status processed via Socket.IO from {data.get('gate_type', 'unknown')}")
+
+@socketio.on('update_car_names')
+def handle_update_car_names_socket(data):
+    """Handle car names update via Socket.IO"""
+    global race_state
+    car_names = data['car_names']
+    race_state['car_names'] = car_names
+    
+    # Broadcast to ALL clients immediately
+    socketio.emit('car_names_updated', {'car_names': car_names})
+    logging.info(f"Car names updated via Socket.IO: {car_names}")
+
+@socketio.on('user_action')  
+def handle_user_action_socket(data):
+    """Handle user actions via Socket.IO"""
+    action_type = data.get('action_type')
+    result = handle_user_action(action_type)
+    logging.info(f"User action '{action_type}' processed via Socket.IO")
 
 
 
