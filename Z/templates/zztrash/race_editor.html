@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Race Editor - Hot Wheels Racing System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <style>
+        .nav-bar {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            padding: 15px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-bar ul {
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-bar a {
+            color: #FFFFFF;
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            padding: 8px 16px;
+            border-radius: 6px;
+        }
+
+        .nav-bar a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .race-card {
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .race-card:hover {
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .lane-input {
+            transition: border-color 0.2s ease;
+        }
+
+        .lane-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .loading-spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .success-flash {
+            animation: flash-green 0.6s ease-in-out;
+        }
+
+        @keyframes flash-green {
+            0% { background-color: transparent; }
+            50% { background-color: #dcfce7; }
+            100% { background-color: transparent; }
+        }
+
+        .error-flash {
+            animation: flash-red 0.6s ease-in-out;
+        }
+
+        @keyframes flash-red {
+            0% { background-color: transparent; }
+            50% { background-color: #fef2f2; }
+            100% { background-color: transparent; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <nav class="nav-bar">
+        <ul>
+            <li><a href="/" target="_blank" rel="noopener">Main Dashboard</a></li>
+            <li><a href="/templates/config.html" target="_blank" rel="noopener">Configuration</a></li>
+            <li><a href="/templates/race_editor.html">Race Editor</a></li>
+        </ul>
+    </nav>
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
+
+        // Loading Spinner Component
+        function LoadingSpinner({ text = "Loading..." }) {
+            return (
+                <div className="flex flex-col items-center justify-center py-8">
+                    <div className="loading-spinner mb-4"></div>
+                    <p className="text-gray-600">{text}</p>
+                </div>
+            );
+        }
+
+        // Alert Component
+        function Alert({ type, message, onClose }) {
+            const bgColor = type === 'success' ? 'bg-green-100 border-green-400 text-green-700' : 
+                           type === 'error' ? 'bg-red-100 border-red-400 text-red-700' : 
+                           'bg-blue-100 border-blue-400 text-blue-700';
+
+            return (
+                <div className={`border-l-4 p-4 mb-4 ${bgColor}`}>
+                    <div className="flex justify-between">
+                        <p>{message}</p>
+                        <button onClick={onClose} className="text-lg font-bold">&times;</button>
+                    </div>
+                </div>
+            );
+        }
+
+        // Race Selector Component
+        function RaceSelector({ onRaceSelect }) {
+            const [races, setRaces] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [currentPage, setCurrentPage] = useState(1);
+            const [totalPages, setTotalPages] = useState(1);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [dateFrom, setDateFrom] = useState('');
+            const [dateTo, setDateTo] = useState('');
+            const [hasAdvancedStats, setHasAdvancedStats] = useState('');
+
+            const fetchRaces = useCallback(async (page = 1, search = false) => {
+                setLoading(true);
+                try {
+                    let url = search ? '/search_races' : '/get_all_races';
+                    const params = new URLSearchParams();
+                    
+                    if (!search) {
+                        params.append('page', page);
+                        params.append('per_page', 20);
+                    } else {
+                        if (searchTerm) params.append('search', searchTerm);
+                        if (dateFrom) params.append('date_from', dateFrom);
+                        if (dateTo) params.append('date_to', dateTo);
+                        if (hasAdvancedStats) params.append('has_advanced_stats', hasAdvancedStats);
+                    }
+
+                    const response = await fetch(`${url}?${params}`);
+                    const data = await response.json();
+                    
+                    setRaces(data.races || []);
+                    if (data.pagination) {
+                        setTotalPages(data.pagination.total_pages);
+                        setCurrentPage(data.pagination.current_page);
+                    }
+                } catch (error) {
+                    console.error('Error fetching races:', error);
+                } finally {
+                    setLoading(false);
+                }
+            }, [searchTerm, dateFrom, dateTo, hasAdvancedStats]);
+
+            useEffect(() => {
+                fetchRaces(1, false);
+            }, []);
+
+            const handleSearch = () => {
+                fetchRaces(1, true);
+            };
+
+            const clearSearch = () => {
+                setSearchTerm('');
+                setDateFrom('');
+                setDateTo('');
+                setHasAdvancedStats('');
+                fetchRaces(1, false);
+            };
+
+            if (loading) {
+                return <LoadingSpinner text="Loading races..." />;
+            }
+
+            return (
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Select Race to Edit</h2>
+                    
+                    {/* Search Controls */}
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                        <input
+                            type="text"
+                            placeholder="Search races..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                            type="date"
+                            value={dateFrom}
+                            onChange={(e) => setDateFrom(e.target.value)}
+                            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                            type="date"
+                            value={dateTo}
+                            onChange={(e) => setDateTo(e.target.value)}
+                            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <select
+                            value={hasAdvancedStats}
+                            onChange={(e) => setHasAdvancedStats(e.target.value)}
+                            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="">Any Stats</option>
+                            <option value="true">Has Advanced Stats</option>
+                            <option value="false">No Advanced Stats</option>
+                        </select>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleSearch}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                            >
+                                Search
+                            </button>
+                            <button
+                                onClick={clearSearch}
+                                className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+                            >
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Race Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {races.map((race) => (
+                            <div
+                                key={race.race_number}
+                                onClick={() => onRaceSelect(race.race_number)}
+                                className="race-card bg-white border rounded-lg p-4 cursor-pointer hover:shadow-lg"
+                            >
+                                <div className="flex justify-between items-start mb-2">
+                                    <h3 className="text-lg font-semibold text-blue-600">
+                                        Race #{race.race_number}
+                                    </h3>
+                                    <span className={`px-2 py-1 rounded text-xs ${
+                                        race.has_advanced_stats > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                    }`}>
+                                        {race.has_advanced_stats > 0 ? 'Advanced Stats' : 'Basic Only'}
+                                    </span>
+                                </div>
+                                <p className="text-sm text-gray-600 mb-2">
+                                    {race.end_time ? new Date(race.end_time).toLocaleDateString() : 'Date Unknown'}
+                                </p>
+                                <p className="text-sm text-gray-600 mb-2">
+                                    Fastest: {race.fastest_time ? `${race.fastest_time.toFixed(3)}s` : 'N/A'}
+                                </p>
+                                <p className="text-sm text-gray-600 mb-2">
+                                    Lanes: {race.total_lanes || 0}
+                                </p>
+                                {race.winner_names && (
+                                    <p className="text-sm text-green-600 font-medium">
+                                        Winner: {race.winner_names}
+                                    </p>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="flex justify-center items-center mt-6 space-x-2">
+                            <button
+                                onClick={() => fetchRaces(currentPage - 1)}
+                                disabled={currentPage <= 1}
+                                className="px-3 py-2 bg-gray-300 text-gray-700 rounded-md disabled:opacity-50"
+                            >
+                                Previous
+                            </button>
+                            <span className="px-3 py-2 text-gray-700">
+                                Page {currentPage} of {totalPages}
+                            </span>
+                            <button
+                                onClick={() => fetchRaces(currentPage + 1)}
+                                disabled={currentPage >= totalPages}
+                                className="px-3 py-2 bg-gray-300 text-gray-700 rounded-md disabled:opacity-50"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Race Editor Component
+        function RaceEditor({ raceId, onBack }) {
+            const [raceData, setRaceData] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [saving, setSaving] = useState(false);
+            const [alert, setAlert] = useState(null);
+            const [editMode, setEditMode] = useState('results'); // 'results', 'stats', 'metadata'
+
+            useEffect(() => {
+                fetchRaceData();
+            }, [raceId]);
+
+            const fetchRaceData = async () => {
+                setLoading(true);
+                try {
+                    const response = await fetch(`/get_race/${raceId}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        setRaceData(data);
+                    } else {
+                        setAlert({ type: 'error', message: 'Failed to load race data' });
+                    }
+                } catch (error) {
+                    setAlert({ type: 'error', message: 'Error loading race data' });
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const saveRaceData = async () => {
+                setSaving(true);
+                try {
+                    const response = await fetch(`/update_race/${raceId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(raceData),
+                    });
+
+                    if (response.ok) {
+                        setAlert({ type: 'success', message: 'Race data saved successfully!' });
+                    } else {
+                        setAlert({ type: 'error', message: 'Failed to save race data' });
+                    }
+                } catch (error) {
+                    setAlert({ type: 'error', message: 'Error saving race data' });
+                } finally {
+                    setSaving(false);
+                }
+            };
+
+            const updateLaneResult = (lane, field, value) => {
+                setRaceData(prev => ({
+                    ...prev,
+                    results: prev.results.map(result =>
+                        result.lane === lane ? { ...result, [field]: value } : result
+                    )
+                }));
+            };
+
+            const updateLaneAdvancedStat = (lane, field, value) => {
+                setRaceData(prev => ({
+                    ...prev,
+                    advanced_stats: prev.advanced_stats.map(stat =>
+                        stat.lane === lane ? { ...stat, [field]: parseFloat(value) || 0 } : stat
+                    )
+                }));
+            };
+
+            const addAutoCompleteData = (lane) => {
+                // Auto-calculate missing data based on existing data
+                const result = raceData.results.find(r => r.lane === lane);
+                if (result && result.time) {
+                    // Add estimated speed if missing
+                    if (!result.additional_data?.speed) {
+                        const estimatedSpeed = (180 / 12 / result.time) * 0.681818; // Convert to MPH
+                        updateLaneResult(lane, 'additional_data', {
+                            ...result.additional_data,
+                            speed: estimatedSpeed.toFixed(2),
+                            estimated: true
+                        });
+                    }
+                }
+                setAlert({ type: 'success', message: `Auto-completed data for Lane ${lane}` });
+            };
+
+            if (loading) {
+                return <LoadingSpinner text="Loading race data..." />;
+            }
+
+            if (!raceData) {
+                return (
+                    <div className="text-center py-8">
+                        <p className="text-red-600 text-xl">Race data not found</p>
+                        <button onClick={onBack} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md">
+                            Back to Race List
+                        </button>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="space-y-6">
+                    {alert && (
+                        <Alert
+                            type={alert.type}
+                            message={alert.message}
+                            onClose={() => setAlert(null)}
+                        />
+                    )}
+
+                    {/* Header */}
+                    <div className="bg-white rounded-lg shadow-lg p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h1 className="text-3xl font-bold text-gray-800">
+                                Editing Race #{raceData.race_id}
+                            </h1>
+                            <div className="flex space-x-3">
+                                <button
+                                    onClick={saveRaceData}
+                                    disabled={saving}
+                                    className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors"
+                                >
+                                    {saving ? 'Saving...' : 'Save Changes'}
+                                </button>
+                                <button
+                                    onClick={onBack}
+                                    className="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                                >
+                                    Back to List
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Mode Selector */}
+                        <div className="flex space-x-4 border-b">
+                            {['results', 'stats', 'metadata'].map((mode) => (
+                                <button
+                                    key={mode}
+                                    onClick={() => setEditMode(mode)}
+                                    className={`px-4 py-2 font-medium capitalize transition-colors ${
+                                        editMode === mode
+                                            ? 'text-blue-600 border-b-2 border-blue-600'
+                                            : 'text-gray-600 hover:text-blue-600'
+                                    }`}
+                                >
+                                    {mode === 'stats' ? 'Advanced Stats' : mode}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Results Editor */}
+                    {editMode === 'results' && (
+                        <div className="bg-white rounded-lg shadow-lg p-6">
+                            <h2 className="text-xl font-bold mb-4">Race Results</h2>
+                            <div className="space-y-4">
+                                {raceData.results.map((result) => (
+                                    <div key={result.lane} className="border rounded-lg p-4">
+                                        <div className="flex justify-between items-center mb-3">
+                                            <h3 className="text-lg font-semibold text-blue-600">
+                                                Lane {result.lane}
+                                            </h3>
+                                            <button
+                                                onClick={() => addAutoCompleteData(result.lane)}
+                                                className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                                            >
+                                                Auto-Complete
+                                            </button>
+                                        </div>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Time (seconds)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    step="0.001"
+                                                    value={result.time || ''}
+                                                    onChange={(e) => updateLaneResult(result.lane, 'time', parseFloat(e.target.value))}
+                                                    className="lane-input w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Placement
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={result.placement || ''}
+                                                    onChange={(e) => updateLaneResult(result.lane, 'placement', parseInt(e.target.value))}
+                                                    className="lane-input w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Car Name
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={result.additional_data?.car_name || ''}
+                                                    onChange={(e) => updateLaneResult(result.lane, 'additional_data', {
+                                                        ...result.additional_data,
+                                                        car_name: e.target.value
+                                                    })}
+                                                    className="lane-input w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Speed (MPH)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={result.additional_data?.speed || ''}
+                                                    onChange={(e) => updateLaneResult(result.lane, 'additional_data', {
+                                                        ...result.additional_data,
+                                                        speed: parseFloat(e.target.value)
+                                                    })}
+                                                    className="lane-input w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Advanced Stats Editor */}
+                    {editMode === 'stats' && (
+                        <div className="bg-white rounded-lg shadow-lg p-6">
+                            <h2 className="text-xl font-bold mb-4">Advanced Physics Statistics</h2>
+                            {raceData.advanced_stats && raceData.advanced_stats.length > 0 ? (
+                                <div className="space-y-6">
+                                    {raceData.advanced_stats.map((stat) => (
+                                        <div key={stat.lane} className="border rounded-lg p-4">
+                                            <h3 className="text-lg font-semibold text-blue-600 mb-4">
+                                                Lane {stat.lane} - Advanced Statistics
+                                            </h3>
+                                            <div className="stats-grid gap-4">
+                                                {/* Speed Stats */}
+                                                <div className="bg-gray-50 p-3 rounded-lg">
+                                                    <h4 className="font-medium text-gray-800 mb-2">Speed Analysis</h4>
+                                                    <div className="space-y-2">
+                                                        <div>
+                                                            <label className="block text-xs text-gray-600">Checkpoint Speed (ft/s)</label>
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                value={stat.start_to_checkpoint_speed || ''}
+                                                                onChange={(e) => updateLaneAdvancedStat(stat.lane, 'start_to_checkpoint_speed', e.target.value)}
+                                                                className="w-full px-2 py-1 text-sm border rounded"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs text-gray-600">Finish Speed (ft/s)</label>
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                value={stat.checkpoint_to_finish_speed || ''}
+                                                                onChange={(e) => updateLaneAdvancedStat(stat.lane, 'checkpoint_to_finish_speed', e.target.value)}
+                                                                className="w-full px-2 py-1 text-sm border rounded"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Energy Stats */}
+                                                <div className="bg-gray-50 p-3 rounded-lg">
+                                                    <h4 className="font-medium text-gray-800 mb-2">Energy Analysis</h4>
+                                                    <div className="space-y-2">
+                                                        <div>
+                                                            <label className="block text-xs text-gray-600">Potential Energy (J)</label>
+                                                            <input
+                                                                type="number"
+                                                                step="0.0001"
+                                                                value={stat.potential_energy_joules || ''}
+                                                                onChange={(e) => updateLaneAdvancedStat(stat.lane, 'potential_energy_joules', e.target.value)}
+                                                                className="w-full px-2 py-1 text-sm border rounded"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs text-gray-600">Kinetic Energy (J)</label>
+                                                            <input
+                                                                type="number"
+                                                                step="0.0001"
+                                                                value={stat.kinetic_energy_finish || ''}
+                                                                onChange={(e) => updateLaneAdvancedStat(stat.lane, 'kinetic_energy_finish', e.target.value)}
+                                                                className="w-full px-2 py-1 text-sm border rounded"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Efficiency Stats */}
+                                                <div className="bg-gray-50 p-3 rounded-lg">
+                                                    <h4 className="font-medium text-gray-800 mb-2">Efficiency</h4>
+                                                    <div className="space-y-2">
+                                                        <div>
+                                                            <label className="block text-xs text-gray-600">Energy Transfer (%)</label>
+                                                            <input
+                                                                type="number"
+                                                                step="0.1"
+                                                                value={stat.energy_transfer_efficiency || ''}
+                                                                onChange={(e) => updateLaneAdvancedStat(stat.lane, 'energy_transfer_efficiency', e.target.value)}
+                                                                className="w-full px-2 py-1 text-sm border rounded"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs text-gray-600">Gravity Efficiency (%)</label>
+                                                            <input
+                                                                type="number"
+                                                                step="0.1"
+                                                                value={(stat.gravity_efficiency_ratio * 100) || ''}
+                                                                onChange={(e) => updateLaneAdvancedStat(stat.lane, 'gravity_efficiency_ratio', e.target.value / 100)}
+                                                                className="w-full px-2 py-1 text-sm border rounded"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Force Stats */}
+                                                <div className="bg-gray-50 p-3 rounded-lg">
+                                                    <h4 className="font-medium text-gray-800 mb-2">Force & Acceleration</h4>
+                                                    <div className="space-y-2">
+                                                        <div>
+                                                            <label className="block text-xs text-gray-600">Acceleration (m/s²)</label>
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                value={stat.acceleration_mps2 || ''}
+                                                                onChange={(e) => updateLaneAdvancedStat(stat.lane, 'acceleration_mps2', e.target.value)}
+                                                                className="w-full px-2 py-1 text-sm border rounded"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs text-gray-600">G-Force</label>
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                value={stat.g_force || ''}
+                                                                onChange={(e) => updateLaneAdvancedStat(stat.lane, 'g_force', e.target.value)}
+                                                                className="w-full px-2 py-1 text-sm border rounded"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <p className="text-gray-600 mb-4">No advanced statistics available for this race.</p>
+                                    <button className="px-4 py-2 bg-blue-600 text-white rounded-md">
+                                        Calculate Advanced Stats
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Metadata Editor */}
+                    {editMode === 'metadata' && (
+                        <div className="bg-white rounded-lg shadow-lg p-6">
+                            <h2 className="text-xl font-bold mb-4">Race Metadata</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Start Time
+                                    </label>
+                                    <input
+                                        type="datetime-local"
+                                        value={raceData.metadata?.start_time?.slice(0, 19) || ''}
+                                        onChange={(e) => setRaceData(prev => ({
+                                            ...prev,
+                                            metadata: { ...prev.metadata, start_time: e.target.value }
+                                        }))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        End Time
+                                    </label>
+                                    <input
+                                        type="datetime-local"
+                                        value={raceData.metadata?.end_time?.slice(0, 19) || ''}
+                                        onChange={(e) => setRaceData(prev => ({
+                                            ...prev,
+                                            metadata: { ...prev.metadata, end_time: e.target.value }
+                                        }))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Race Status
+                                    </label>
+                                    <select
+                                        value={raceData.metadata?.status || ''}
+                                        onChange={(e) => setRaceData(prev => ({
+                                            ...prev,
+                                            metadata: { ...prev.metadata, status: e.target.value }
+                                        }))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="">Select Status</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="timeout">Timeout</option>
+                                        <option value="cancelled">Cancelled</option>
+                                        <option value="invalid">Invalid</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Race Notes
+                                    </label>
+                                    <textarea
+                                        value={raceData.metadata?.notes || ''}
+                                        onChange={(e) => setRaceData(prev => ({
+                                            ...prev,
+                                            metadata: { ...prev.metadata, notes: e.target.value }
+                                        }))}
+                                        rows={3}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Add any notes about this race..."
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Main App Component
+        function App() {
+            const [selectedRaceId, setSelectedRaceId] = useState(null);
+
+            return (
+                <div className="container mx-auto px-4 py-8">
+                    {selectedRaceId ? (
+                        <RaceEditor
+                            raceId={selectedRaceId}
+                            onBack={() => setSelectedRaceId(null)}
+                        />
+                    ) : (
+                        <RaceSelector onRaceSelect={setSelectedRaceId} />
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

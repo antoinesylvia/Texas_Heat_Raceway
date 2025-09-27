@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pinewood Derby Race Control Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#28b463',
+                        secondary: '#219a52',
+                        racing: '#e74c3c',
+                        finished: '#3498db',
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        .race-header {
+            background: linear-gradient(135deg, #28b463 0%, #219a52 100%);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav-bar {
+            background-color: #28b463;
+            padding: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .nav-bar ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+        }
+
+        .nav-bar a {
+            color: #FFFFFF;
+            text-decoration: none;
+            font-size: 18px;
+            transition: color 0.3s ease;
+        }
+
+        .nav-bar a:hover {
+            color: #17202a;
+        }
+
+        .theme-toggle {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 5px 10px;
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .record-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .race-time {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .winner-row {
+            background-color: #ffd700 !important;
+            color: #000 !important;
+            font-weight: bold;
+        }
+
+        .checkpoint-time {
+            font-size: 0.85em;
+            color: #6366f1;
+            font-style: italic;
+        }
+
+        .advanced-stats {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .physics-value {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="dark:bg-gray-900 dark:text-white transition-colors duration-300">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const socket = io();
+        
+        function NavBar({ toggleTheme, isDarkMode }) {
+            return (
+                <nav className="nav-bar">
+                    <ul>
+                        <li><a href="main.html">Race Control</a></li>
+                        <li><a href="config.html" target="_blank" rel="noopener noreferrer">Configuration</a></li>
+                        <li><a href="#" onClick={() => window.location.reload()}>Refresh</a></li>
+                    </ul>
+                    <button onClick={toggleTheme} className="theme-toggle">
+                        {isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+                    </button>
+                </nav>
+            );
+        }
+
+        function RaceHeader({ currentRace, raceState, weather }) {
+            const stateColors = {
+                'Initialization': 'bg-gray-500',
+                'Ready': 'bg-blue-500',
+                'Countdown': 'bg-yellow-500',
+                'Racing': 'bg-red-500',
+                'Placement': 'bg-orange-500',
+                'Finished': 'bg-green-500',
+                'Intermission': 'bg-purple-500',
+                'Reset': 'bg-gray-600'
+            };
+
+            return (
+                <div className="race-header">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h1 className="text-2xl font-bold">Pinewood Derby Race Control</h1>
+                            <p className="text-sm">Current Race: {currentRace?.formatted_race || 'No Active Race'}</p>
+                        </div>
+                        <div className="text-center">
+                            <div className={`inline-block px-4 py-2 rounded-full text-white font-bold ${stateColors[raceState] || 'bg-gray-500'}`}>
+                                {raceState || 'Unknown'}
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-sm">Dallas, Texas</p>
+                            <p className="text-sm">{weather.temperature}°F | {weather.humidity}%</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function CurrentRacePanel({ currentRace, cars, onCarNameChange, trackRecord }) {
+            if (!currentRace) {
+                return (
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+                        <h2 className="text-xl font-bold mb-4">No Active Race</h2>
+                        <p className="text-gray-600 dark:text-gray-400">Waiting for race to begin...</p>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold">Current Race: {currentRace.race_number}</h2>
+                        <div className="text-right">
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Track Record</p>
+                            <p className="race-time text-green-600">{trackRecord ? `${trackRecord.toFixed(3)}s` : '--'}</p>
+                        </div>
+                    </div>
+                    
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-gray-100 dark:bg-gray-700">
+                                <tr>
+                                    <th className="p-3 text-left">Lane</th>
+                                    <th className="p-3 text-left">Car Name</th>
+                                    <th className="p-3 text-left">Time (s)</th>
+                                    <th className="p-3 text-left">Position</th>
+                                    <th className="p-3 text-left">Speed (mph)</th>
+                                    <th className="p-3 text-left">Checkpoint</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {cars.map((car, index) => (
+                                    <tr key={car.lane} className={`border-b dark:border-gray-600 ${car.position === 1 ? 'winner-row' : ''}`}>
+                                        <td className="p-3 font-bold">{car.lane}</td>
+                                        <td className="p-3">
+                                            <input
+                                                type="text"
+                                                value={car.name}
+                                                onChange={(e) => onCarNameChange(car.lane, e.target.value)}
+                                                className="w-full p-1 border rounded dark:bg-gray-700 dark:border-gray-600"
+                                                placeholder={`Car ${car.lane}`}
+                                            />
+                                        </td>
+                                        <td className="p-3 race-time">
+                                            {car.time ? car.time.toFixed(3) : '--'}
+                                        </td>
+                                        <td className="p-3">
+                                            {car.position || '--'}
+                                        </td>
+                                        <td className="p-3">
+                                            {car.speed ? car.speed.toFixed(2) : '--'}
+                                        </td>
+                                        <td className="p-3 checkpoint-time">
+                                            {car.checkpoint_time ? `${car.checkpoint_time.toFixed(3)}s` : '--'}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        }
+
+        function TopRecordsPanel({ records }) {
+            const fastestTime = records.reduce((fastest, record) => {
+                return (!fastest || record.time < fastest.time) ? record : fastest;
+            }, null);
+
+            const fastestSpeed = records.reduce((fastest, record) => {
+                return (!fastest || record.speed > fastest.speed) ? record : fastest;
+            }, null);
+
+            return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div className="record-card">
+                        <h3 className="font-bold text-lg mb-2">🏆 Fastest Time</h3>
+                        {fastestTime ? (
+                            <div>
+                                <p className="race-time text-2xl">{fastestTime.time.toFixed(3)}s</p>
+                                <p className="text-sm opacity-90">{fastestTime.car_name}</p>
+                                <p className="text-xs opacity-75">Race #{fastestTime.race_number}</p>
+                            </div>
+                        ) : (
+                            <p className="text-sm opacity-75">No records yet</p>
+                        )}
+                    </div>
+
+                    <div className="record-card">
+                        <h3 className="font-bold text-lg mb-2">🚀 Fastest Speed</h3>
+                        {fastestSpeed ? (
+                            <div>
+                                <p className="race-time text-2xl">{fastestSpeed.speed.toFixed(2)} mph</p>
+                                <p className="text-sm opacity-90">{fastestSpeed.car_name}</p>
+                                <p className="text-xs opacity-75">Race #{fastestSpeed.race_number}</p>
+                            </div>
+                        ) : (
+                            <p className="text-sm opacity-75">No records yet</p>
+                        )}
+                    </div>
+
+                    <div className="stats-card">
+                        <h3 className="font-bold text-lg mb-2">📊 Total Races</h3>
+                        <p className="race-time text-2xl">{records.length > 0 ? Math.max(...records.map(r => r.race_number)) : 0}</p>
+                        <p className="text-sm opacity-90">Completed</p>
+                    </div>
+
+                    <div className="stats-card">
+                        <h3 className="font-bold text-lg mb-2">🏁 Total Runs</h3>
+                        <p className="race-time text-2xl">{records.length}</p>
+                        <p className="text-sm opacity-90">Individual cars</p>
+                    </div>
+                </div>
+            );
+        }
+
+        function AdvancedStatsPanel({ advancedStats, raceId }) {
+            const [statsData, setStatsData] = React.useState(null);
+            const [loading, setLoading] = React.useState(false);
+
+            React.useEffect(() => {
+                if (raceId && advancedStats) {
+                    loadAdvancedStats(raceId);
+                }
+            }, [raceId, advancedStats]);
+
+            const loadAdvancedStats = async (id) => {
+                setLoading(true);
+                try {
+                    const response = await fetch(`/get_stats/${id}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        setStatsData(data);
+                    }
+                } catch (error) {
+                    console.error('Error loading advanced stats:', error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            if (!advancedStats || loading) {
+                return (
+                    <div className="advanced-stats">
+                        <h3 className="text-lg font-bold mb-2">🔬 Advanced Physics Analytics</h3>
+                        <p className="text-sm opacity-75">
+                            {loading ? 'Loading...' : 'Advanced stats available when checkpoint gate is present'}
+                        </p>
+                    </div>
+                );
+            }
+
+            if (!statsData || statsData.length === 0) {
+                return (
+                    <div className="advanced-stats">
+                        <h3 className="text-lg font-bold mb-2">🔬 Advanced Physics Analytics</h3>
+                        <p className="text-sm opacity-75">No advanced statistics calculated for this race</p>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="advanced-stats">
+                    <h3 className="text-lg font-bold mb-4">🔬 Advanced Physics Analytics - Race {raceId}</h3>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead className="bg-black bg-opacity-20">
+                                <tr>
+                                    <th className="p-2 text-left">Lane</th>
+                                    <th className="p-2 text-left">Avg Speed</th>
+                                    <th className="p-2 text-left">Acceleration</th>
+                                    <th className="p-2 text-left">Kinetic Energy</th>
+                                    <th className="p-2 text-left">Efficiency</th>
+                                    <th className="p-2 text-left">G-Force</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {statsData.map((stat, index) => (
+                                    <tr key={index} className="border-b border-white border-opacity-20">
+                                        <td className="p-2 font-bold">{stat.lane}</td>
+                                        <td className="p-2 physics-value">{stat.average_speed?.toFixed(2)} mph</td>
+                                        <td className="p-2 physics-value">{stat.acceleration_mps2?.toFixed(2)} m/s²</td>
+                                        <td className="p-2 physics-value">{stat.kinetic_energy_finish?.toFixed(3)} J</td>
+                                        <td className="p-2 physics-value">{stat.mechanical_efficiency?.toFixed(1)}%</td>
+                                        <td className="p-2 physics-value">{stat.g_force?.toFixed(2)} g</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        }
+
+        function RaceHistoryPanel({ records }) {
+            const [selectedRace, setSelectedRace] = React.useState(null);
+            const [showAdvanced, setShowAdvanced] = React.useState(false);
+
+            // Group records by race number
+            const raceGroups = records.reduce((groups, record) => {
+                const raceNum = record.race_number;
+                if (!groups[raceNum]) {
+                    groups[raceNum] = [];
+                }
+                groups[raceNum].push(record);
+                return groups;
+            }, {});
+
+            const sortedRaces = Object.keys(raceGroups)
+                .sort((a, b) => parseInt(b) - parseInt(a))
+                .slice(0, 10); // Show last 10 races
+
+            return (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                    <h2 className="text-xl font-bold mb-4">Recent Race History</h2>
+                    
+                    <div className="space-y-4">
+                        {sortedRaces.map(raceNum => {
+                            const raceData = raceGroups[raceNum].sort((a, b) => a.time - b.time);
+                            const winner = raceData[0];
+                            
+                            return (
+                                <div key={raceNum} className="border dark:border-gray-600 rounded-lg p-4">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h3 className="font-bold">Race #{raceNum}</h3>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => setSelectedRace(selectedRace === raceNum ? null : raceNum)}
+                                                className="text-blue-600 hover:text-blue-800 text-sm"
+                                            >
+                                                {selectedRace === raceNum ? 'Hide Details' : 'Show Details'}
+                                            </button>
+                                            <button
+                                                onClick={() => setShowAdvanced(!showAdvanced)}
+                                                className="text-purple-600 hover:text-purple-800 text-sm"
+                                            >
+                                                Advanced Stats
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                                        <span className="font-semibold text-green-600">Winner: {winner.car_name}</span>
+                                        <span className="ml-4 race-time">{winner.time.toFixed(3)}s</span>
+                                        <span className="ml-4">{winner.speed.toFixed(2)} mph</span>
+                                    </div>
+
+                                    {selectedRace === raceNum && (
+                                        <div className="mt-3 overflow-x-auto">
+                                            <table className="w-full text-sm">
+                                                <thead className="bg-gray-100 dark:bg-gray-700">
+                                                    <tr>
+                                                        <th className="p-2 text-left">Position</th>
+                                                        <th className="p-2 text-left">Lane</th>
+                                                        <th className="p-2 text-left">Car Name</th>
+                                                        <th className="p-2 text-left">Time</th>
+                                                        <th className="p-2 text-left">Speed</th>
+                                                        <th className="p-2 text-left">Gap</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {raceData.map((record, index) => (
+                                                        <tr key={index} className={`border-b dark:border-gray-600 ${index === 0 ? 'bg-yellow-100 dark:bg-yellow-900' : ''}`}>
+                                                            <td className="p-2 font-bold">{index + 1}</td>
+                                                            <td className="p-2">{record.lane}</td>
+                                                            <td className="p-2">{record.car_name}</td>
+                                                            <td className="p-2 race-time">{record.time.toFixed(3)}s</td>
+                                                            <td className="p-2">{record.speed.toFixed(2)} mph</td>
+                                                            <td className="p-2">
+                                                                {index === 0 ? '--' : `+${(record.time - winner.time).toFixed(3)}s`}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+
+                                    {showAdvanced && selectedRace === raceNum && (
+                                        <AdvancedStatsPanel advancedStats={true} raceId={parseInt(raceNum)} />
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        }
+
+        function App() {
+            const [isDarkMode, setIsDarkMode] = React.useState(true);
+            const [weather, setWeather] = React.useState({ 
+                temperature: '--', 
+                humidity: '--', 
+                lastUpdated: '--' 
+            });
+            const [currentRace, setCurrentRace] = React.useState(null);
+            const [raceState, setRaceState] = React.useState('Initialization');
+            const [cars, setCars] = React.useState(
+                Array.from({ length: 6 }, (_, i) => ({
+                    lane: i + 1,
+                    name: `Car ${i + 1}`,
+                    time: null,
+                    position: null,
+                    speed: null,
+                    checkpoint_time: null
+                }))
+            );
+            const [records, setRecords] = React.useState([]);
+            const [trackRecord, setTrackRecord] = React.useState(null);
+
+            React.useEffect(() => {
+                // Fetch initial data
+                fetchRecords();
+                fetchWeatherConfig();
+                fetchRaceState();
+
+                // Socket.IO event listeners
+                socket.on('race_state_update', handleRaceStateUpdate);
+                socket.on('track_record_update', handleTrackRecordUpdate);
+                socket.on('car_names_updated', handleCarNamesUpdate);
+
+                return () => {
+                    socket.off('race_state_update');
+                    socket.off('track_record_update'); 
+                    socket.off('car_names_updated');
+                };
+            }, []);
+
+            const toggleTheme = () => setIsDarkMode(!isDarkMode);
+
+            const fetchRecords = async () => {
+                try {
+                    const response = await fetch('/get_records');
+                    const data = await response.json();
+                    setRecords(data);
+                    
+                    // Find track record
+                    if (data.length > 0) {
+                        const fastest = data.reduce((min, record) => 
+                            record.time < min.time ? record : min
+                        );
+                        setTrackRecord(fastest.time);
+                    }
+                } catch (error) {
+                    console.error('Error fetching records:', error);
+                }
+            };
+
+            const fetchWeatherConfig = async () => {
+                try {
+                    const response = await fetch('/get_weather_config');
+                    const config = await response.json();
+                    if (config.api_key && config.city_id) {
+                        fetchWeatherData(config.api_key, config.city_id);
+                    }
+                } catch (error) {
+                    console.error('Error fetching weather config:', error);
+                }
+            };
+
+            const fetchWeatherData = async (apiKey, cityId) => {
+                try {
+                    const response = await fetch(
+                        `https://api.openweathermap.org/data/2.5/weather?id=${cityId}&appid=${apiKey}&units=imperial`
+                    );
+                    const data = await response.json();
+                    setWeather({
+                        temperature: Math.round(data.main.temp),
+                        humidity: data.main.humidity,
+                        lastUpdated: new Date().toLocaleTimeString()
+                    });
+                } catch (error) {
+                    console.error('Error fetching weather:', error);
+                }
+            };
+
+            const fetchRaceState = async () => {
+                try {
+                    const response = await fetch('/get_state');
+                    const state = await response.json();
+                    setRaceState(state.status);
+                    setCurrentRace(state);
+                } catch (error) {
+                    console.error('Error fetching race state:', error);
+                }
+            };
+
+            const handleRaceStateUpdate = (data) => {
+                setRaceState(data.status);
+                setCurrentRace(data);
+                
+                // Update car data if race results are included
+                if (data.finish_times) {
+                    setCars(prevCars => 
+                        prevCars.map(car => ({
+                            ...car,
+                            time: data.finish_times[car.lane - 1],
+                            // Position and speed would be calculated by backend
+                        }))
+                    );
+                }
+            };
+
+            const handleTrackRecordUpdate = (data) => {
+                if (data.track_record) {
+                    setTrackRecord(data.track_record);
+                }
+            };
+
+            const handleCarNamesUpdate = (data) => {
+                setCars(prevCars => 
+                    prevCars.map(car => ({
+                        ...car,
+                        name: data.car_names[car.lane - 1] || car.name
+                    }))
+                );
+            };
+
+            const handleCarNameChange = (lane, newName) => {
+                setCars(prevCars => 
+                    prevCars.map(car => 
+                        car.lane === lane ? { ...car, name: newName } : car
+                    )
+                );
+
+                // Update server
+                const newCarNames = cars.map(car => 
+                    car.lane === lane ? newName : car.name
+                );
+                socket.emit('update_car_names', { car_names: newCarNames });
+            };
+
+            React.useEffect(() => {
+                document.documentElement.classList.toggle('dark', isDarkMode);
+            }, [isDarkMode]);
+
+            return (
+                <div className="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+                    <NavBar toggleTheme={toggleTheme} isDarkMode={isDarkMode} />
+                    <RaceHeader 
+                        currentRace={currentRace} 
+                        raceState={raceState} 
+                        weather={weather} 
+                    />
+                    
+                    <div className="container mx-auto px-4 py-6">
+                        <TopRecordsPanel records={records} />
+                        
+                        <CurrentRacePanel 
+                            currentRace={currentRace}
+                            cars={cars}
+                            onCarNameChange={handleCarNameChange}
+                            trackRecord={trackRecord}
+                        />
+                        
+                        <RaceHistoryPanel records={records} />
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hot Wheels Racing System - Main Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <style>
+        .nav-bar {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            padding: 15px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-bar ul {
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-bar a {
+            color: #FFFFFF;
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            padding: 8px 16px;
+            border-radius: 6px;
+        }
+
+        .nav-bar a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .dashboard-card {
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .dashboard-card:hover {
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .status-online { background-color: #10b981; }
+        .status-offline { background-color: #ef4444; }
+        .status-warning { background-color: #f59e0b; }
+
+        .loading-spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .race-blink {
+            animation: blink 1s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <nav class="nav-bar">
+        <ul>
+            <li><a href="/">Main Dashboard</a></li>
+            <li><a href="/race_editor">Race Editor</a></li>
+            <li><a href="/templates/config.html">Configuration</a></li>
+        </ul>
+    </nav>
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Loading Spinner Component
+        function LoadingSpinner() {
+            return (
+                <div className="flex justify-center items-center py-8">
+                    <div className="loading-spinner"></div>
+                </div>
+            );
+        }
+
+        // Status Badge Component
+        function StatusBadge({ status }) {
+            const getStatusClass = (status) => {
+                switch (status?.toLowerCase()) {
+                    case 'ready':
+                    case 'finished':
+                    case 'completed':
+                        return 'bg-green-100 text-green-800';
+                    case 'racing':
+                    case 'countdown':
+                        return 'bg-yellow-100 text-yellow-800 race-blink';
+                    case 'initialization':
+                    case 'placement':
+                        return 'bg-blue-100 text-blue-800';
+                    case 'reset':
+                    case 'intermission':
+                        return 'bg-gray-100 text-gray-800';
+                    default:
+                        return 'bg-red-100 text-red-800';
+                }
+            };
+
+            return (
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusClass(status)}`}>
+                    {status || 'Unknown'}
+                </span>
+            );
+        }
+
+        // Race State Panel
+        function RaceStatePanel({ raceState }) {
+            return (
+                <div className="dashboard-card bg-white rounded-lg shadow-lg p-6">
+                    <h2 className="text-xl font-bold mb-4 text-gray-800">Current Race State</h2>
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Status:</span>
+                            <StatusBadge status={raceState?.status} />
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Components Ready:</span>
+                            <span className={`px-2 py-1 rounded text-sm ${
+                                raceState?.components_ready ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                                {raceState?.components_ready ? 'Yes' : 'No'}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Last Update:</span>
+                            <span className="text-sm text-gray-500">
+                                {raceState?.last_state_change ? 
+                                    new Date(raceState.last_state_change * 1000).toLocaleTimeString() : 
+                                    'Unknown'
+                                }
+                            </span>
+                        </div>
+                        {raceState?.car_names && (
+                            <div>
+                                <span className="text-gray-600 block mb-2">Car Names:</span>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    {raceState.car_names.map((name, index) => (
+                                        <div key={index} className="bg-gray-100 px-2 py-1 rounded">
+                                            Lane {index + 1}: {name}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Quick Stats Panel
+        function QuickStatsPanel() {
+            const [stats, setStats] = useState(null);
+
+            useEffect(() => {
+                fetchStats();
+                const interval = setInterval(fetchStats, 30000); // Update every 30 seconds
+                return () => clearInterval(interval);
+            }, []);
+
+            const fetchStats = async () => {
+                try {
+                    const response = await fetch('/get_records');
+                    if (response.ok) {
+                        const records = await response.json();
+                        const fastestTime = Math.min(...records.map(r => r.time).filter(t => t));
+                        const totalRaces = new Set(records.map(r => r.race_number)).size;
+                        setStats({
+                            fastestTime: fastestTime === Infinity ? null : fastestTime,
+                            totalRaces,
+                            totalRuns: records.length
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error fetching stats:', error);
+                }
+            };
+
+            return (
+                <div className="dashboard-card bg-white rounded-lg shadow-lg p-6">
+                    <h2 className="text-xl font-bold mb-4 text-gray-800">Quick Statistics</h2>
+                    {stats ? (
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center">
+                                <span className="text-gray-600">🏆 Fastest Time:</span>
+                                <span className="font-bold text-green-600">
+                                    {stats.fastestTime ? `${stats.fastestTime.toFixed(3)}s` : 'N/A'}
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-gray-600">📊 Total Races:</span>
+                                <span className="font-bold text-blue-600">{stats.totalRaces}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-gray-600">🏁 Total Runs:</span>
+                                <span className="font-bold text-purple-600">{stats.totalRuns}</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <LoadingSpinner />
+                    )}
+                </div>
+            );
+        }
+
+        // Recent Races Panel
+        function RecentRacesPanel() {
+            const [recentRaces, setRecentRaces] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                fetchRecentRaces();
+            }, []);
+
+            const fetchRecentRaces = async () => {
+                try {
+                    const response = await fetch('/get_all_races?page=1&per_page=5');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setRecentRaces(data.races || []);
+                    }
+                } catch (error) {
+                    console.error('Error fetching recent races:', error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="dashboard-card bg-white rounded-lg shadow-lg p-6">
+                    <h2 className="text-xl font-bold mb-4 text-gray-800">Recent Races</h2>
+                    {loading ? (
+                        <LoadingSpinner />
+                    ) : recentRaces.length > 0 ? (
+                        <div className="space-y-3">
+                            {recentRaces.map((race) => (
+                                <div key={race.race_number} className="border rounded-lg p-3 hover:bg-gray-50 transition-colors">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="font-semibold text-blue-600">Race #{race.race_number}</span>
+                                        <span className="text-sm text-gray-500">
+                                            {race.end_time ? new Date(race.end_time).toLocaleDateString() : 'Unknown'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-gray-600">
+                                            Fastest: {race.fastest_time ? `${race.fastest_time.toFixed(3)}s` : 'N/A'}
+                                        </span>
+                                        {race.winner_names && (
+                                            <span className="text-green-600 font-medium">
+                                                Winner: {race.winner_names}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-gray-500 text-center py-4">No races found</p>
+                    )}
+                </div>
+            );
+        }
+
+        // Advanced Leaderboards Panel
+        function LeaderboardsPanel() {
+            const [leaderboards, setLeaderboards] = useState(null);
+            const [selectedBoard, setSelectedBoard] = useState('fastest_time');
+
+            useEffect(() => {
+                fetchLeaderboards();
+            }, []);
+
+            const fetchLeaderboards = async () => {
+                try {
+                    const response = await fetch('/get_advanced_leaderboards');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setLeaderboards(data);
+                    }
+                } catch (error) {
+                    console.error('Error fetching leaderboards:', error);
+                }
+            };
+
+            const leaderboardOptions = [
+                { key: 'fastest_time', label: '⚡ Fastest Time' },
+                { key: 'fastest_speed', label: '🚀 Fastest Speed' },
+                { key: 'highest_efficiency', label: '📊 Highest Efficiency' },
+                { key: 'best_acceleration', label: '🏎️ Best Acceleration' },
+                { key: 'most_power', label: '💪 Most Power' },
+                { key: 'momentum_masters', label: '🎯 Momentum Masters' }
+            ];
+
+            return (
+                <div className="dashboard-card bg-white rounded-lg shadow-lg p-6 col-span-2">
+                    <h2 className="text-xl font-bold mb-4 text-gray-800">Advanced Leaderboards</h2>
+                    
+                    {/* Leaderboard Selector */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                        {leaderboardOptions.map(option => (
+                            <button
+                                key={option.key}
+                                onClick={() => setSelectedBoard(option.key)}
+                                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                                    selectedBoard === option.key
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                            >
+                                {option.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Leaderboard Content */}
+                    {leaderboards && leaderboards[selectedBoard] ? (
+                        <div className="space-y-2">
+                            {leaderboards[selectedBoard].slice(0, 5).map((entry, index) => (
+                                <div key={index} className="flex justify-between items-center p-2 rounded hover:bg-gray-50">
+                                    <div className="flex items-center">
+                                        <span className={`inline-block w-6 h-6 rounded-full text-center text-sm font-bold mr-3 ${
+                                            index === 0 ? 'bg-yellow-400 text-yellow-900' :
+                                            index === 1 ? 'bg-gray-300 text-gray-700' :
+                                            index === 2 ? 'bg-amber-600 text-white' :
+                                            'bg-blue-100 text-blue-700'
+                                        }`}>
+                                            {index + 1}
+                                        </span>
+                                        <div>
+                                            <p className="font-medium">{entry.car_name}</p>
+                                            <p className="text-xs text-gray-500">Race #{entry.race_number} • {entry.date}</p>
+                                        </div>
+                                    </div>
+                                    <span className="font-bold text-blue-600">
+                                        {entry.value} {entry.unit}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <LoadingSpinner />
+                    )}
+                </div>
+            );
+        }
+
+        // Component Status Panel
+        function ComponentStatusPanel() {
+            const [componentStatus, setComponentStatus] = useState(null);
+
+            useEffect(() => {
+                fetchComponentStatus();
+                const interval = setInterval(fetchComponentStatus, 10000); // Update every 10 seconds
+                return () => clearInterval(interval);
+            }, []);
+
+            const fetchComponentStatus = async () => {
+                try {
+                    const response = await fetch('/get_component_status');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setComponentStatus(data);
+                    }
+                } catch (error) {
+                    console.error('Error fetching component status:', error);
+                }
+            };
+
+            return (
+                <div className="dashboard-card bg-white rounded-lg shadow-lg p-6">
+                    <h2 className="text-xl font-bold mb-4 text-gray-800">System Status</h2>
+                    {componentStatus ? (
+                        <div className="space-y-3">
+                            {Object.entries(componentStatus.components || {}).map(([component, status]) => (
+                                <div key={component} className="flex justify-between items-center">
+                                    <span className="text-gray-600">{component}:</span>
+                                    <div className="flex items-center">
+                                        <span className={`status-indicator ${
+                                            status === 'OK' ? 'status-online' : 
+                                            status === 'Warning' ? 'status-warning' : 
+                                            'status-offline'
+                                        }`}></span>
+                                        <span className={`text-sm font-medium ${
+                                            status === 'OK' ? 'text-green-600' : 
+                                            status === 'Warning' ? 'text-yellow-600' : 
+                                            'text-red-600'
+                                        }`}>
+                                            {status}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                            <div className="pt-2 mt-3 border-t text-xs text-gray-500">
+                                Last updated: {new Date(componentStatus.timestamp * 1000).toLocaleString()}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-center py-4">
+                            <p className="text-gray-500">No status data available</p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Main App Component
+        function App() {
+            const [raceState, setRaceState] = useState(null);
+            const [socket, setSocket] = useState(null);
+
+            useEffect(() => {
+                // Initialize Socket.IO connection
+                const newSocket = io();
+                setSocket(newSocket);
+
+                // Fetch initial race state
+                fetchRaceState();
+
+                // Listen for race state updates
+                newSocket.on('race_state_update', (data) => {
+                    setRaceState(data);
+                });
+
+                return () => {
+                    newSocket.disconnect();
+                };
+            }, []);
+
+            const fetchRaceState = async () => {
+                try {
+                    const response = await fetch('/get_state');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setRaceState(data);
+                    }
+                } catch (error) {
+                    console.error('Error fetching race state:', error);
+                }
+            };
+
+            return (
+                <div className="container mx-auto px-4 py-8">
+                    <div className="mb-8">
+                        <h1 className="text-4xl font-bold text-gray-800 mb-2">
+                            Hot Wheels Racing System
+                        </h1>
+                        <p className="text-gray-600">
+                            F1-Level Physics Analysis • Real-Time Race Monitoring • Advanced Statistics
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {/* Row 1 */}
+                        <RaceStatePanel raceState={raceState} />
+                        <QuickStatsPanel />
+                        <ComponentStatusPanel />
+                        
+                        {/* Row 2 */}
+                        <RecentRacesPanel />
+                        <LeaderboardsPanel />
+                    </div>
+
+                    {/* Quick Actions */}
+                    <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
+                        <h2 className="text-xl font-bold mb-4 text-gray-800">Quick Actions</h2>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <a
+                                href="/race_editor"
+                                className="bg-blue-600 text-white p-4 rounded-lg text-center hover:bg-blue-700 transition-colors"
+                            >
+                                <div className="text-2xl mb-2">📝</div>
+                                <div className="font-medium">Edit Races</div>
+                            </a>
+                            <a
+                                href="/templates/config.html"
+                                className="bg-green-600 text-white p-4 rounded-lg text-center hover:bg-green-700 transition-colors"
+                            >
+                                <div className="text-2xl mb-2">⚙️</div>
+                                <div className="font-medium">Configuration</div>
+                            </a>
+                            <button
+                                onClick={fetchRaceState}
+                                className="bg-purple-600 text-white p-4 rounded-lg text-center hover:bg-purple-700 transition-colors"
+                            >
+                                <div className="text-2xl mb-2">🔄</div>
+                                <div className="font-medium">Refresh Data</div>
+                            </button>
+                            <button
+                                onClick={() => window.location.reload()}
+                                className="bg-gray-600 text-white p-4 rounded-lg text-center hover:bg-gray-700 transition-colors"
+                            >
+                                <div className="text-2xl mb-2">🏠</div>
+                                <div className="font-medium">Reload Page</div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Off!</title>
+    <script src="./js/react.development.js"></script>
+    <script src="./js/react-dom.development.js"></script>
+    <script src="./js/babel.min.js"></script>
+    <script src="./css/tailwind.css"></script>
+    <script src="./js/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#28b463',
+                        secondary: '#219a52',
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+    
+        @media print {
+            .no-print {
+                display: none;
+            }
+            body {
+                font-size: 12px;
+            }
+        }
+        @media (max-width: 640px) {
+            table {
+                font-size: 12px;
+            }
+            .racers-column {
+                width: 30%;
+            }
+            .points-column {
+                width: 17%;
+            }
+        }
+        .highlight {
+            background-color: #32ab6e !important;
+        }
+        .dark .highlight {
+            background-color: #32ab6e !important;
+        }
+
+        .no-arrow {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background: none;
+            padding-right: 20px;
+        }
+        .nav-bar {
+            background-color: #28b463;
+            padding: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .nav-bar ul {
+            display: flex;
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            justify-content: center;
+        }
+        .nav-bar li {
+            margin: 0 15px;
+        }
+		.nav-bar li:not(:last-child)::after {
+			content: '|';
+			color: #ffffff;
+			margin-left: 15px;
+		}
+        .nav-bar a {
+            color: #FFFFFF;
+            text-decoration: none;
+            font-size: 18px;
+            transition: color 0.3s ease;
+        }
+        .nav-bar a:hover {
+            color: #17202a;
+        }
+        .theme-toggle {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 5px 10px;
+            position: absolute;
+            right: 20px;
+            top: 12px;
+        }
+    </style>
+</head>
+<body class="dark:bg-gray-900 dark:text-white transition-colors duration-300">
+
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useRef } = React;
+
+        function NavBar({ toggleTheme, isDarkMode }) {
+            return (
+                <nav className="nav-bar">
+                    <ul>
+                        <li><a href="main.html" target="_blank" rel="noopener noreferrer">Main Run</a></li>
+                        <li><a href="tourney_bracketbuster.html" target="_blank" rel="noopener noreferrer">Tournament - Bracket Buster</a></li>
+                        <li><a href="tourney_faceoff.html" style={{ color: '#000' }}>Tournament - Face Off</a></li>
+                        <li><a href="config.html" target="_blank" rel="noopener noreferrer">Configuration</a></li>
+                    </ul>
+                    <button onClick={toggleTheme} className="theme-toggle">
+                        {isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+                    </button>
+                </nav>
+            );
+        }
+
+        function App() {
+            const [isDarkMode, setIsDarkMode] = useState(() => {
+                const saved = localStorage.getItem('darkMode');
+                return saved !== null ? JSON.parse(saved) : true;
+            });
+            const [racerCount, setRacerCount] = useState(6);
+            const [cars, setCars] = useState(() => {
+                const saved = localStorage.getItem('cars');
+                return saved ? JSON.parse(saved) : Array.from({length: 6}, (_, i) => ({ id: i + 1, name: `Car ${i + 1}` }));
+            });
+            const [results, setResults] = useState(() => {
+                const saved = localStorage.getItem('results');
+                return saved ? JSON.parse(saved) : {
+                    1: {}, 2: {}, 3: {}
+                };
+            });
+            const [usedPoints, setUsedPoints] = useState(() => {
+                const saved = localStorage.getItem('usedPoints');
+                return saved ? JSON.parse(saved) : {
+                    1: {}, 2: {}, 3: {}
+                };
+            });
+            const [additionalHeat, setAdditionalHeat] = useState(null);
+            const [tiedCarIds, setTiedCarIds] = useState([]);
+            const [tiedRacerCount, setTiedRacerCount] = useState(0);
+            const [history, setHistory] = useState([]);
+            const [historyIndex, setHistoryIndex] = useState(-1);
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+
+            useEffect(() => {
+                localStorage.setItem('cars', JSON.stringify(cars));
+                localStorage.setItem('results', JSON.stringify(results));
+                localStorage.setItem('usedPoints', JSON.stringify(usedPoints));
+                localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
+                document.documentElement.classList.toggle('dark', isDarkMode);
+                updateChart();
+            }, [cars, results, usedPoints, isDarkMode, additionalHeat]);
+
+            const addToHistory = useCallback((cars, results, usedPoints, additionalHeat, tiedCarIds, tiedRacerCount) => {
+                setHistory(prev => [...prev.slice(0, historyIndex + 1), { cars, results, usedPoints, additionalHeat, tiedCarIds, tiedRacerCount }]);
+                setHistoryIndex(prev => prev + 1);
+            }, [historyIndex]);
+
+            const handleResultChange = (carId, heat, value) => {
+                const newResults = {
+                    ...results,
+                    [heat]: {
+                        ...results[heat],
+                        [carId]: value
+                    }
+                };
+                const newUsedPoints = {...usedPoints};
+                if (value) {
+                    const oldValue = results[heat][carId];
+                    if (oldValue) {
+                        delete newUsedPoints[heat][oldValue];
+                    }
+                    newUsedPoints[heat][value] = carId;
+                } else {
+                    delete newUsedPoints[heat][results[heat][carId]];
+                }
+                setResults(newResults);
+                setUsedPoints(newUsedPoints);
+                addToHistory(cars, newResults, newUsedPoints, additionalHeat, tiedCarIds, tiedRacerCount);
+
+                const isComplete = [1, 2, 3].every(h => 
+                    Object.keys(newResults[h]).length === racerCount
+                );
+
+                if (isComplete && !additionalHeat) {
+                    checkForTiebreaker(newResults);
+                }
+            };
+
+            const checkForTiebreaker = (newResults) => {
+                const totalPoints = cars.slice(0, racerCount).map(car => ({
+                    id: car.id,
+                    points: getTotalPoints(car.id, newResults)
+                }));
+                const maxPoints = Math.max(...totalPoints.map(car => car.points));
+                const tiedCars = totalPoints.filter(car => car.points === maxPoints);
+                
+                if (tiedCars.length > 1) {
+                    setAdditionalHeat(4);
+                    setTiedCarIds(tiedCars.map(car => car.id));
+                    setTiedRacerCount(tiedCars.length);
+                    setResults(prev => ({
+                        ...prev,
+                        4: {}
+                    }));
+                    setUsedPoints(prev => ({
+                        ...prev,
+                        4: {}
+                    }));
+                }
+            };
+
+            const handleCarNameChange = (id, newName) => {
+                const newCars = cars.map(car => car.id === id ? { ...car, name: newName } : car);
+                setCars(newCars);
+                addToHistory(newCars, results, usedPoints, additionalHeat, tiedCarIds, tiedRacerCount);
+            };
+
+            const getTotalPoints = (carId, resultsToUse = results) => {
+                return Object.keys(resultsToUse).reduce((total, heat) => {
+                    const points = parseInt(resultsToUse[heat][carId]);
+                    return total + (isNaN(points) ? 0 : points);
+                }, 0);
+            };
+
+            const getAveragePoints = (carId) => {
+                const total = getTotalPoints(carId);
+                const count = Object.keys(results).filter(heat => results[heat][carId] !== undefined).length;
+                return count > 0 ? (total / count).toFixed(2) : '0.00';
+            };
+
+            const getHighestScore = (carId) => {
+                const scores = Object.keys(results).map(heat => parseInt(results[heat][carId])).filter(score => !isNaN(score));
+                return scores.length > 0 ? Math.max(...scores).toString() : '0';
+            };
+
+            const getCarIdsWithHighestPoints = () => {
+                const totalPoints = cars.slice(0, racerCount).map(car => ({
+                    id: car.id,
+                    points: getTotalPoints(car.id)
+                }));
+                const maxPoints = Math.max(...totalPoints.map(car => car.points));
+                return maxPoints > 0 ? totalPoints.filter(car => car.points === maxPoints).map(car => car.id) : [];
+            };
+
+            const getLeaderboard = () => {
+                return cars
+                    .slice(0, racerCount)
+                    .map(car => ({ ...car, totalPoints: getTotalPoints(car.id) }))
+                    .sort((a, b) => b.totalPoints - a.totalPoints);
+            };
+
+            const getHeatWinners = () => {
+                const winners = {};
+                Object.keys(results).forEach(heat => {
+                    const heatResults = Object.entries(results[heat]);
+                    if (heatResults.length > 0) {
+                        const [winnerId, winnerPoints] = heatResults.reduce((max, current) => 
+                            parseInt(current[1]) > parseInt(max[1]) ? current : max
+                        );
+                        winners[heat] = {
+                            car: cars.find(car => car.id === parseInt(winnerId)),
+                            points: winnerPoints
+                        };
+                    }
+                });
+                return winners;
+            };
+
+            const getAvailablePoints = (heat, carId) => {
+                const used = Object.keys(usedPoints[heat] || {}).map(Number);
+                const currentValue = results[heat]?.[carId];
+                if (heat === 4) {
+                    if (!tiedCarIds.includes(carId)) {
+                        return [];
+                    }
+                    return Array.from({length: tiedRacerCount}, (_, i) => racerCount - i)
+                        .filter(point => !used.includes(point) || point.toString() === currentValue);
+                }
+                return Array.from({length: racerCount}, (_, i) => racerCount - i)
+                    .filter(point => !used.includes(point) || point.toString() === currentValue);
+            };
+
+            const exportData = () => {
+                const data = { cars, results, racerCount, usedPoints, additionalHeat, tiedCarIds, tiedRacerCount };
+                const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'texas_heat_raceway_data.json';
+                a.click();
+            };
+
+            const importData = (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const data = JSON.parse(e.target.result);
+                        setCars(data.cars);
+                        setResults(data.results);
+                        setRacerCount(data.racerCount || 6);
+                        setUsedPoints(data.usedPoints || {1: {}, 2: {}, 3: {}});
+                        setAdditionalHeat(data.additionalHeat || null);
+                        setTiedCarIds(data.tiedCarIds || []);
+                        setTiedRacerCount(data.tiedRacerCount || 0);
+                        addToHistory(data.cars, data.results, data.usedPoints || {1: {}, 2: {}, 3: {}}, data.additionalHeat || null, data.tiedCarIds || [], data.tiedRacerCount || 0);
+                    };
+                    reader.readAsText(file);
+                }
+            };
+
+            const undo = () => {
+                if (historyIndex > 0) {
+                    setHistoryIndex(prev => prev - 1);
+                    const { cars: prevCars, results: prevResults, usedPoints: prevUsedPoints, additionalHeat: prevAdditionalHeat, tiedCarIds: prevTiedCarIds, tiedRacerCount: prevTiedRacerCount } = history[historyIndex - 1];
+                    setCars(prevCars);
+                    setResults(prevResults);
+                    setUsedPoints(prevUsedPoints);
+                    setAdditionalHeat(prevAdditionalHeat);
+                    setTiedCarIds(prevTiedCarIds);
+                    setTiedRacerCount(prevTiedRacerCount);
+                }
+            };
+
+            const redo = () => {
+                if (historyIndex < history.length - 1) {
+                    setHistoryIndex(prev => prev + 1);
+                    const { cars: nextCars, results: nextResults, usedPoints: nextUsedPoints, additionalHeat: nextAdditionalHeat, tiedCarIds: nextTiedCarIds, tiedRacerCount: nextTiedRacerCount } = history[historyIndex + 1];
+                    setCars(nextCars);
+                    setResults(nextResults);
+                    setUsedPoints(nextUsedPoints);
+                    setAdditionalHeat(nextAdditionalHeat);
+                    setTiedCarIds(nextTiedCarIds);
+                    setTiedRacerCount(nextTiedRacerCount);
+                }
+            };
+
+            const resetAllResults = () => {
+                const newResults = {1: {}, 2: {}, 3: {}};
+                const newUsedPoints = {1: {}, 2: {}, 3: {}};
+                const newCars = Array.from({length: racerCount}, (_, i) => ({ id: i + 1, name: `Car ${i + 1}` }));
+                setResults(newResults);
+                setUsedPoints(newUsedPoints);
+                setAdditionalHeat(null);
+                setTiedCarIds([]);
+                setTiedRacerCount(0);
+                setCars(newCars);
+                addToHistory(newCars, results, usedPoints, additionalHeat, tiedCarIds, tiedRacerCount);
+                addToHistory(cars, newResults, newUsedPoints, null, [], 0);
+            };
+
+            const resetHeat = (heat) => {
+                const newResults = {...results, [heat]: {}};
+                const newUsedPoints = {...usedPoints, [heat]: {}};
+                setResults(newResults);
+                setUsedPoints(newUsedPoints);
+                if (heat === 4) {
+                    setAdditionalHeat(null);
+                    setTiedCarIds([]);
+                    setTiedRacerCount(0);
+                }
+                addToHistory(cars, newResults, newUsedPoints, heat === 4 ? null : additionalHeat, heat === 4 ? [] : tiedCarIds, heat === 4 ? 0 : tiedRacerCount);
+            };
+
+            const resetRacers = () => {
+                const newCars = Array.from({length: racerCount}, (_, i) => ({ id: i + 1, name: `Car ${i + 1}` }));
+                setCars(newCars);
+                addToHistory(newCars, results, usedPoints, additionalHeat, tiedCarIds, tiedRacerCount);
+            };
+
+            const handleRacerCountChange = (count) => {
+                setRacerCount(count);
+                const newCars = Array.from({length: count}, (_, i) => {
+                    const existingCar = cars[i];
+                    return existingCar || { id: i + 1, name: `Car ${i + 1}` };
+                });
+                setCars(newCars);
+                addToHistory(newCars, results, usedPoints, additionalHeat, tiedCarIds, tiedRacerCount);
+            };
+
+            const toggleDarkMode = () => {
+                setIsDarkMode(prevMode => !prevMode);
+            };
+
+            const updateChart = () => {
+                const ctx = chartRef.current.getContext('2d');
+                
+                if (chartInstance.current) {
+                    chartInstance.current.destroy();
+                }
+
+                const labels = Object.keys(results).map(heat => `Heat ${heat}`);
+                const datasets = cars.slice(0, racerCount).map((car, index) => ({
+                    label: car.name,
+                    data: Object.keys(results).map(heat => parseInt(results[heat][car.id]) || 0),
+                    borderColor: `hsl(${index * 360 / racerCount}, 70%, 50%)`,
+                    fill: false
+                }));
+
+                chartInstance.current = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Points'
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Points Per Heat'
+                            },
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+            };
+
+            const highestPointsCarIds = getCarIdsWithHighestPoints();
+
+            const getOrdinalRank = (rank) => {
+                const suffixes = ["th", "st", "nd", "rd"];
+                const v = rank % 100;
+                return rank + (suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0]);
+            };
+
+            return (
+                <div className={`min-h-screen ${isDarkMode ? 'bg-darkBg text-gray-200' : 'bg-gray-100 text-gray-900'}`}>
+                    <NavBar toggleTheme={toggleDarkMode} isDarkMode={isDarkMode} />
+                    <div className="container mx-auto p-4">
+                        <h1 className="text-3xl font-bold mb-4">Texas Heat Raceway - Tournament - Face Off!</h1>
+                        <div className="mb-4 flex flex-wrap gap-2 no-print items-center justify-between">
+                            <div className="flex flex-wrap gap-2 items-center">
+                                <label className="flex items-center">
+                                    Total Racers:
+                                    <select 
+                                        value={racerCount} 
+                                        onChange={(e) => handleRacerCountChange(parseInt(e.target.value))}
+                                        className={`no-arrow ml-2 p-2 border rounded ${isDarkMode ? 'bg-darkSecondary blue-900' : 'bg-yellow text-black-900'}`}
+                                    >
+                                        {[2, 3, 4, 5, 6].map(num => (
+                                            <option key={num} value={num}>{num}</option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <button onClick={exportData} className="bg-blue-500 text-white px-4 py-2 rounded">Export Data</button>
+                                <label className="bg-green-500 text-white px-4 py-2 rounded cursor-pointer">
+                                    Import Data
+                                    <input type="file" onChange={importData} className="hidden" accept=".json" />
+                                </label>
+                                <button onClick={undo} disabled={historyIndex <= 0} className="bg-yellow-500 text-white px-4 py-2 rounded disabled:opacity-50">Undo</button>
+                                <button onClick={redo} disabled={historyIndex >= history.length - 1} className="bg-yellow-500 text-white px-4 py-2 rounded disabled:opacity-50">Redo</button>
+                                <button onClick={() => window.print()} className="bg-purple-500 text-white px-4 py-2 rounded">Print Results</button>
+                                <button onClick={resetAllResults} className="bg-red-500 text-white px-4 py-2 rounded">Reset - All</button>
+                                <button onClick={() => resetHeat(1)} className="bg-orange-500 text-white px-4 py-2 rounded">Reset - Heat 1</button>
+                                <button onClick={() => resetHeat(2)} className="bg-orange-500 text-white px-4 py-2 rounded">Reset - Heat 2</button>
+                                <button onClick={() => resetHeat(3)} className="bg-orange-500 text-white px-4 py-2 rounded">Reset - Heat 3</button>
+                                {additionalHeat && (
+                                    <button onClick={() => resetHeat(4)} className="bg-orange-500 text-white px-4 py-2 rounded">Reset - Heat 4</button>
+                                )}
+                                <button onClick={resetRacers} className="bg-pink-500 text-white px-4 py-2 rounded">Reset - Racers</button>
+                            </div>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className={`w-full shadow-md rounded ${isDarkMode ? 'bg-darkSecondary' : 'bg-white'}`}>
+                                <thead>
+                                    <tr className={isDarkMode ? 'bg-gray-800' : 'bg-gray-200'}>
+                                        <th className="p-2 border">Name - Vehicle</th>
+                                        <th className="p-2 border">Heat 1</th>
+                                        <th className="p-2 border">Heat 2</th>
+                                        <th className="p-2 border">Heat 3</th>
+                                        {additionalHeat && <th className="p-2 border">Heat 4</th>}
+                                        <th className="p-2 border">High Score</th>
+                                        <th className="p-2 border">Average Score</th>
+                                        <th className="p-2 border">Total Points</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {cars.slice(0, racerCount).map((car, index) => (
+                                        <tr key={car.id} className={`${index % 2 === 0 ? (isDarkMode ? 'bg-gray-700' : 'bg-gray-100') : (isDarkMode ? 'bg-gray-600' : 'bg-white')} ${highestPointsCarIds.includes(car.id) ? 'highlight' : ''}`}>
+                                            <td className="p-2 border">
+                                                <div className="flex items-center">
+                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 ${index < 3 ? 'bg-yellow-500' : 'bg-yellow-500'} text-gray-900`}>
+                                                        {index + 1}
+                                                    </div>
+                                                    <input
+                                                        type="text"
+                                                        value={car.name}
+                                                        onChange={(e) => handleCarNameChange(car.id, e.target.value)}
+                                                        className={`bg-transparent w-full ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}
+                                                    />
+                                                </div>
+                                            </td>
+                                            {[1, 2, 3, 4].map(heat => (
+                                                (heat <= 3 || additionalHeat) && (
+                                                    <td key={heat} className="p-2 border">
+                                                        <select
+                                                            value={results[heat]?.[car.id] || ''}
+                                                            onChange={(e) => handleResultChange(car.id, heat, e.target.value)}
+                                                            className={`no-arrow w-full p-1 border rounded ${isDarkMode ? 'bg-gray-800 text-gray-200' : 'bg-white text-gray-900'}`}
+                                                            disabled={heat === 4 && !tiedCarIds.includes(car.id)}
+                                                        >
+                                                            <option value="">#</option>
+                                                            {getAvailablePoints(heat, car.id).map(point => (
+                                                                <option key={point} value={point}>{point}</option>
+                                                            ))}
+                                                        </select>
+                                                    </td>
+                                                )
+                                            ))}
+                                            <td className="p-2 border">{getHighestScore(car.id)}</td>
+                                            <td className="p-2 border">{getAveragePoints(car.id)}</td>
+                                            <td className="p-2 border font-bold">{getTotalPoints(car.id)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Live Leaderboard */}
+                        <div className="mt-8">
+                            <h2 className="text-2xl font-bold mb-4">Live Leaderboard</h2>
+                            <table className={`w-full shadow-md rounded ${isDarkMode ? 'bg-darkSecondary' : 'bg-white'}`}>
+                                <thead>
+                                    <tr className={isDarkMode ? 'bg-gray-800' : 'bg-gray-200'}>
+                                        <th className="p-2 border">Ranking</th>
+                                        <th className="p-2 border">Name - Vehicle</th>
+                                        <th className="p-2 border">Total Points</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {getLeaderboard().map((car, index) => (
+                                        <tr key={car.id} className={index % 2 === 0 ? (isDarkMode ? 'bg-gray-700' : 'bg-gray-100') : (isDarkMode ? 'bg-gray-600' : 'bg-white')}>
+                                            <td className="p-2 border">{getOrdinalRank(index + 1)}</td>
+                                            <td className="p-2 border">{car.name}</td>
+                                            <td className="p-2 border">{car.totalPoints}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Heat-wise Statistics */}
+                        <div className="mt-8">
+                            <h2 className="text-2xl font-bold mb-4">Heat-wise Statistics</h2>
+                            <table className={`w-full shadow-md rounded ${isDarkMode ? 'bg-darkSecondary' : 'bg-white'}`}>
+                                <thead>
+                                    <tr className={isDarkMode ? 'bg-gray-800' : 'bg-gray-200'}>
+                                        <th className="p-2 border">Heat</th>
+                                        <th className="p-2 border">Winner</th>
+                                        <th className="p-2 border">Points</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {Object.entries(getHeatWinners()).map(([heat, winner]) => (
+                                        <tr key={heat} className={isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}>
+                                            <td className="p-2 border">Heat {heat}</td>
+                                            <td className="p-2 border">{winner.car ? winner.car.name : 'N/A'}</td>
+                                            <td className="p-2 border">{winner.points || 'N/A'}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Chart Visualization */}
+                        <div className="mt-8">
+                            <h2 className="text-2xl font-bold mb-4">Points Progression Chart</h2>
+                            <div className={`w-full shadow-md rounded ${isDarkMode ? 'bg-darkSecondary' : 'bg-white'} p-4`}>
+                                <canvas ref={chartRef} style={{width: '100%', height: '400px'}}></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

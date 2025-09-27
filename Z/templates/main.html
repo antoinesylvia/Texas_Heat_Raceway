@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Main Run</title>
+    <script src="./css/tailwind.css"></script>
+    <script src="./js/react.development.js"></script>
+    <script src="./js/react-dom.development.js"></script>
+    <script src="./js/babel.min.js"></script>
+    <script src="./js/socket.io.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#28b463',
+                        secondary: '#219a52',
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        #root {
+            width: 100%;
+        }
+        .nav-bar {
+            background-color: #28b463;
+            padding: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            position: relative;
+        }
+        .nav-bar ul {
+            display: flex;
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            justify-content: center;
+            width: 100%;
+        }
+        .nav-bar li {
+            margin: 0 15px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+        }
+        .nav-bar li:not(:last-child)::after {
+            content: '|';
+            color: #ffffff;
+            margin-left: 15px;
+        }
+        .nav-bar a {
+            color: #FFFFFF;
+            text-decoration: none;
+            font-size: 18px;
+            transition: color 0.3s ease;
+        }
+        .nav-bar a:hover {
+            color: #17202a;
+        }
+        .theme-toggle {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 5px 10px;
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+    </style>
+</head>
+<body class="dark:bg-gray-900 dark:text-white transition-colors duration-300">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const socket = io();
+        let currentRaceTimestamp;
+        let weatherApiKey;
+        let weatherCityId;
+
+        function NavBar({ toggleTheme, isDarkMode }) {
+            return (
+                <nav className="nav-bar">
+                    <ul>
+                        <li><a href="main.html" style={{ color: '#000' }}>Main Run</a></li>
+                        <li><a href="race_editor.html" target="_blank" rel="noopener noreferrer">Race Editor</a></li>
+                        <li><a href="tourney_bracketbuster.html" target="_blank" rel="noopener noreferrer">Tournament - Bracket Buster</a></li>
+                        <li><a href="tourney_faceoff.html" target="_blank" rel="noopener noreferrer">Tournament - Face Off</a></li>
+                        <li><a href="config.html" target="_blank" rel="noopener noreferrer">Configuration</a></li>
+                    </ul>
+                    <button onClick={toggleTheme} className="theme-toggle">
+                        {isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+                    </button>
+                </nav>
+            );
+        }
+
+        function WeatherInfo({ temperature, humidity, lastUpdated }) {
+            return (
+                <div className="bg-gray-200 dark:bg-gray-800 p-4 rounded-lg shadow-md mb-6 flex justify-around">
+                    <span>City: Dallas, Texas</span>
+                    <span>Temperature: {temperature}°F</span>
+                    <span>Humidity: {humidity}%</span>
+                    <span>Last Updated: {lastUpdated}</span>
+                </div>
+            );
+        }
+
+        function RaceInfo({ raceNumber, trackState, componentStatus }) {
+            const stateMap = {
+                'Initialization': '1. Initialization',
+                'Ready': '2. Ready',
+                'Countdown': '3. Countdown',
+                'Racing': '4. Racing',
+                'Placement': '5. Placement',
+                'Finished': '6. Finished',
+                'Intermission': '7. Intermission',
+                'Reset': '8. Reset'
+            };
+
+            return (
+                <div className="bg-gray-300 dark:bg-gray-700 p-4 rounded-lg shadow-md mb-6 flex justify-between items-center">
+                    <span>Race Number: {raceNumber}</span>
+                    <span>Track State: {stateMap[trackState] || trackState}</span>
+                    <span>Track Component Status: {componentStatus}</span>
+                </div>
+            );
+        }
+
+        function ComponentStatus({ components }) {
+            return (
+                <div className="flex justify-center flex-wrap mb-6">
+                    {Object.entries(components).map(([name, status]) => (
+                        <div key={name} className="flex items-center mx-2 my-1">
+                            <span>{name}:</span>
+                            <div className={`w-3 h-3 rounded-full ml-2 ${status === 'OK' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        function RaceResults({ cars, onCarNameChange, onWeightChange }) {
+            return (
+                <table className="w-full mb-6">
+                    <thead className="bg-gray-200 dark:bg-gray-700">
+                        <tr>
+                            <th className="p-2 text-left">Lane</th>
+                            <th className="p-2 text-left">Car Name</th>
+                            <th className="p-2 text-left">Time (s)</th>
+                            <th className="p-2 text-left">Position</th>
+                            <th className="p-2 text-left">Speed (mph)</th>
+                            <th className="p-2 text-left">Weight (g)</th>
+                            <th className="p-2 text-left">Kinetic Energy (J)</th>
+                            <th className="p-2 text-left">Momentum (kg⋅m/s)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {cars.map((car, index) => (
+                            <tr key={car.lane} className={`${car.winner ? 'bg-green-200 dark:bg-green-800' : (car.tied ? 'bg-yellow-200 dark:bg-yellow-800' : '')}`}>
+                                <td className="p-2">{car.lane}</td>
+                                <td className="p-2">
+                                    <input 
+                                        type="text" 
+                                        value={car.name} 
+                                        onChange={(e) => onCarNameChange(car.lane, e.target.value)}
+                                        className="w-full p-1 border rounded dark:bg-gray-700 dark:text-white"
+                                    />
+                                </td>
+                                <td className="p-2">{car.time !== null ? car.time.toFixed(3) : '-'}</td>
+                                <td className="p-2">{car.position || '-'}</td>
+                                <td className="p-2">{car.speed !== null ? car.speed.toFixed(2) : '-'}</td>
+                                <td className="p-2">
+                                    <input 
+                                        type="text" 
+                                        value={car.weight} 
+                                        onChange={(e) => onWeightChange(car.lane, e.target.value)}
+                                        className="w-full p-1 border rounded dark:bg-gray-700 dark:text-white"
+                                    />
+                                </td>
+                                <td className="p-2">{car.kineticEnergy !== null ? car.kineticEnergy.toFixed(2) : '-'}</td>
+                                <td className="p-2">{car.momentum !== null ? car.momentum.toFixed(2) : '-'}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            );
+        }
+
+        function Leaderboard({ entries }) {
+            return (
+                <div className="mb-6">
+                    <h2 className="text-2xl font-bold mb-4">Leaderboard</h2>
+                    <table className="w-full">
+                        <thead className="bg-gray-200 dark:bg-gray-700">
+                            <tr>
+                                <th className="p-2 text-left">Car Name</th>
+                                <th className="p-2 text-left">Finish Time (s)</th>
+                                <th className="p-2 text-left">Speed (mph)</th>
+                                <th className="p-2 text-left">Race Number</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {entries.map((entry, index) => (
+                                <tr key={index} className={index === 0 ? 'bg-green-200 dark:bg-green-800' : ''}>
+                                    <td className="p-2">{entry.car_name}</td>
+                                    <td className="p-2">{entry.time.toFixed(3)}</td>
+                                    <td className="p-2">{entry.speed.toFixed(2)}</td>
+                                    <td className="p-2">{entry.race_number || '-'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
+
+        function AdvancedLeaderboards({ advancedLeaderboards, selectedLeaderboard, onLeaderboardChange }) {
+            const leaderboardTypes = [
+                // Basic Performance
+                { key: 'fastest_time', label: 'Fastest Time', icon: '⚡', category: 'Basic' },
+                { key: 'fastest_speed', label: 'Top Speed', icon: '🚀', category: 'Basic' },
+                { key: 'checkpoint_speed', label: 'Checkpoint Speed', icon: '📍', category: 'Basic' },
+                { key: 'finish_speed', label: 'Finish Speed', icon: '🏁', category: 'Basic' },
+                
+                // Force & Acceleration
+                { key: 'best_acceleration', label: 'Best Acceleration', icon: '📈', category: 'Force' },
+                { key: 'max_force', label: 'Maximum Force', icon: '💥', category: 'Force' },
+                { key: 'best_gforce', label: 'G-Force Champions', icon: '🌪️', category: 'Force' },
+                { key: 'terminal_velocity', label: 'Terminal Velocity', icon: '🎯', category: 'Force' },
+                
+                // Energy Analysis
+                { key: 'highest_potential_energy', label: 'Potential Energy', icon: '⛰️', category: 'Energy' },
+                { key: 'highest_kinetic_energy', label: 'Kinetic Energy', icon: '💨', category: 'Energy' },
+                { key: 'most_work_done', label: 'Work Done', icon: '�', category: 'Energy' },
+                { key: 'most_power', label: 'Peak Power', icon: '💪', category: 'Energy' },
+                
+                // Efficiency Metrics
+                { key: 'highest_efficiency', label: 'Energy Efficiency', icon: '🔋', category: 'Efficiency' },
+                { key: 'mechanical_efficiency', label: 'Mechanical Efficiency', icon: '⚙️', category: 'Efficiency' },
+                { key: 'energy_conversion', label: 'Energy Conversion', icon: '🔄', category: 'Efficiency' },
+                { key: 'lowest_friction', label: 'Lowest Friction', icon: '🧊', category: 'Efficiency' },
+                
+                // Advanced Physics
+                { key: 'momentum_masters', label: 'Momentum Masters', icon: '⚡', category: 'Advanced' },
+                { key: 'momentum_change', label: 'Momentum Change', icon: '🔀', category: 'Advanced' },
+                { key: 'impulse_champions', label: 'Impulse Champions', icon: '💫', category: 'Advanced' },
+                { key: 'jerk_analysis', label: 'Jerk Analysis', icon: '📊', category: 'Advanced' },
+                { key: 'coefficient_restitution', label: 'Bounce Factor', icon: '🏀', category: 'Advanced' },
+                
+                // Energy Loss Analysis
+                { key: 'lowest_energy_loss', label: 'Lowest Energy Loss', icon: '🛡️', category: 'Loss' },
+                { key: 'rolling_resistance', label: 'Rolling Resistance', icon: '🛞', category: 'Loss' }
+            ];
+
+            const categories = ['Basic', 'Force', 'Energy', 'Efficiency', 'Advanced', 'Loss'];
+            const currentData = advancedLeaderboards[selectedLeaderboard] || [];
+
+            return (
+                <div className="mb-6">
+                    <div className="mb-6">
+                        <h2 className="text-2xl font-bold mb-4">🏆 Advanced Performance Leaderboards</h2>
+                        <p className="text-gray-600 dark:text-gray-400 mb-4">
+                            Comprehensive physics-based analysis across {leaderboardTypes.length} different performance metrics
+                        </p>
+                        
+                        {/* Category-based organization */}
+                        {categories.map(category => (
+                            <div key={category} className="mb-4">
+                                <h3 className="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-300">{category} Performance</h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {leaderboardTypes.filter(type => type.category === category).map(type => (
+                                        <button
+                                            key={type.key}
+                                            onClick={() => onLeaderboardChange(type.key)}
+                                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                                selectedLeaderboard === type.key
+                                                    ? 'bg-blue-500 text-white shadow-md'
+                                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                            }`}
+                                        >
+                                            {type.icon} {type.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+                        <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4">
+                            <h3 className="text-xl font-bold">
+                                {leaderboardTypes.find(t => t.key === selectedLeaderboard)?.icon} {' '}
+                                {leaderboardTypes.find(t => t.key === selectedLeaderboard)?.label} Champions
+                            </h3>
+                            <p className="text-sm opacity-90">
+                                Category: {leaderboardTypes.find(t => t.key === selectedLeaderboard)?.category} Performance
+                            </p>
+                        </div>
+                        
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-50 dark:bg-gray-700">
+                                    <tr>
+                                        <th className="p-3 text-left font-semibold">Rank</th>
+                                        <th className="p-3 text-left font-semibold">Car Name</th>
+                                        <th className="p-3 text-left font-semibold">Value</th>
+                                        <th className="p-3 text-left font-semibold">Unit</th>
+                                        <th className="p-3 text-left font-semibold">Race #</th>
+                                        <th className="p-3 text-left font-semibold">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {currentData.map((entry, index) => (
+                                        <tr 
+                                            key={index} 
+                                            className={`border-b border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                                                index === 0 ? 'bg-yellow-50 dark:bg-yellow-900 bg-opacity-30' :
+                                                index === 1 ? 'bg-gray-50 dark:bg-gray-600 bg-opacity-30' :
+                                                index === 2 ? 'bg-orange-50 dark:bg-orange-900 bg-opacity-30' : ''
+                                            }`}
+                                        >
+                                            <td className="p-3">
+                                                <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
+                                                    index === 0 ? 'bg-yellow-500 text-white' :
+                                                    index === 1 ? 'bg-gray-400 text-white' :
+                                                    index === 2 ? 'bg-orange-500 text-white' :
+                                                    'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+                                                }`}>
+                                                    {index + 1}
+                                                </span>
+                                            </td>
+                                            <td className="p-3 font-medium">{entry.car_name}</td>
+                                            <td className="p-3 font-mono text-lg font-bold text-blue-600 dark:text-blue-400">
+                                                {entry.value}
+                                            </td>
+                                            <td className="p-3 text-gray-600 dark:text-gray-400">{entry.unit}</td>
+                                            <td className="p-3">{entry.race_number}</td>
+                                            <td className="p-3 text-gray-600 dark:text-gray-400">{entry.date}</td>
+                                        </tr>
+                                    ))}
+                                    {currentData.length === 0 && (
+                                        <tr>
+                                            <td colSpan="6" className="p-8 text-center text-gray-500 dark:text-gray-400">
+                                                <div className="text-4xl mb-2">📊</div>
+                                                <p>No data available for this metric yet.</p>
+                                                <p className="text-sm mt-1">Complete some races with advanced stats to see rankings!</p>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function TopRecordsPanel({ trackRecord, fastestSpeed, totalRaces, totalRuns }) {
+            return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-gradient-to-br from-yellow-400 to-yellow-600 text-white p-4 rounded-lg shadow-md">
+                        <h3 className="font-bold text-lg mb-2">🏆 Fastest Time</h3>
+                        <p className="text-2xl font-mono font-bold">{trackRecord ? `${trackRecord.toFixed(3)}s` : '--'}</p>
+                        <p className="text-sm opacity-90">Track Record</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-red-400 to-red-600 text-white p-4 rounded-lg shadow-md">
+                        <h3 className="font-bold text-lg mb-2">🚀 Fastest Speed</h3>
+                        <p className="text-2xl font-mono font-bold">{fastestSpeed ? `${fastestSpeed.toFixed(2)} mph` : '--'}</p>
+                        <p className="text-sm opacity-90">Speed Record</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-blue-400 to-blue-600 text-white p-4 rounded-lg shadow-md">
+                        <h3 className="font-bold text-lg mb-2">📊 Total Races</h3>
+                        <p className="text-2xl font-mono font-bold">{totalRaces}</p>
+                        <p className="text-sm opacity-90">Completed</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-green-400 to-green-600 text-white p-4 rounded-lg shadow-md">
+                        <h3 className="font-bold text-lg mb-2">🏁 Total Runs</h3>
+                        <p className="text-2xl font-mono font-bold">{totalRuns}</p>
+                        <p className="text-sm opacity-90">Individual Cars</p>
+                    </div>
+                </div>
+            );
+        }
+
+        function StatisticsSummary({ advancedLeaderboards }) {
+            const getTopValue = (leaderboard) => {
+                if (!advancedLeaderboards[leaderboard] || advancedLeaderboards[leaderboard].length === 0) {
+                    return { value: '--', car: '--' };
+                }
+                const top = advancedLeaderboards[leaderboard][0];
+                return { value: top.value, car: top.car_name, unit: top.unit };
+            };
+
+            const stats = {
+                bestAcceleration: getTopValue('best_acceleration'),
+                topEfficiency: getTopValue('highest_efficiency'),
+                peakPower: getTopValue('most_power'),
+                maxGForce: getTopValue('best_gforce')
+            };
+
+            return (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-6">
+                    <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-4 rounded-t-lg">
+                        <h3 className="text-xl font-bold">📈 Performance Analytics Summary</h3>
+                        <p className="text-sm opacity-90">Top performers across all categories</p>
+                    </div>
+                    <div className="p-6">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="text-center">
+                                <div className="text-2xl mb-1">📈</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Best Acceleration</div>
+                                <div className="font-bold text-lg text-indigo-600 dark:text-indigo-400">
+                                    {stats.bestAcceleration.value} {stats.bestAcceleration.unit}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                    {stats.bestAcceleration.car}
+                                </div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-2xl mb-1">🔋</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Top Efficiency</div>
+                                <div className="font-bold text-lg text-green-600 dark:text-green-400">
+                                    {stats.topEfficiency.value} {stats.topEfficiency.unit}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                    {stats.topEfficiency.car}
+                                </div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-2xl mb-1">💪</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Peak Power</div>
+                                <div className="font-bold text-lg text-red-600 dark:text-red-400">
+                                    {stats.peakPower.value} {stats.peakPower.unit}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                    {stats.peakPower.car}
+                                </div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-2xl mb-1">🌪️</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Max G-Force</div>
+                                <div className="font-bold text-lg text-purple-600 dark:text-purple-400">
+                                    {stats.maxGForce.value} {stats.maxGForce.unit}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                    {stats.maxGForce.car}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function AdvancedStatsPanel({ stats, raceId, checkpointAvailable }) {
+            if (!checkpointAvailable || !stats) {
+                return (
+                    <div className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white p-4 rounded-lg shadow-md mb-6">
+                        <h3 className="text-lg font-bold mb-2">🔬 Advanced Physics Analytics</h3>
+                        <p className="text-sm opacity-75">
+                            {checkpointAvailable ? 'Loading advanced statistics...' : 'Advanced stats require checkpoint gate'}
+                        </p>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white p-4 rounded-lg shadow-md mb-6">
+                    <h3 className="text-lg font-bold mb-4">🔬 Advanced Physics Analytics - Race {raceId}</h3>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead className="bg-black bg-opacity-20">
+                                <tr>
+                                    <th className="p-2 text-left">Lane</th>
+                                    <th className="p-2 text-left">Avg Speed</th>
+                                    <th className="p-2 text-left">Acceleration</th>
+                                    <th className="p-2 text-left">Kinetic Energy</th>
+                                    <th className="p-2 text-left">Efficiency</th>
+                                    <th className="p-2 text-left">G-Force</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {stats.map((stat, index) => (
+                                    <tr key={index} className="border-b border-white border-opacity-20">
+                                        <td className="p-2 font-bold">{stat.lane}</td>
+                                        <td className="p-2 font-mono">{stat.average_speed?.toFixed(2)} mph</td>
+                                        <td className="p-2 font-mono">{stat.acceleration_mps2?.toFixed(2)} m/s²</td>
+                                        <td className="p-2 font-mono">{stat.kinetic_energy_finish?.toFixed(3)} J</td>
+                                        <td className="p-2 font-mono">{stat.mechanical_efficiency?.toFixed(1)}%</td>
+                                        <td className="p-2 font-mono">{stat.g_force?.toFixed(2)} g</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        }
+
+        function RaceHistoryPanel({ leaderboard, onViewAdvancedStats }) {
+            // Group records by race number
+            const raceGroups = leaderboard.reduce((groups, record) => {
+                const raceNum = record.race_number || 'Unknown';
+                if (!groups[raceNum]) {
+                    groups[raceNum] = [];
+                }
+                groups[raceNum].push(record);
+                return groups;
+            }, {});
+
+            const sortedRaces = Object.keys(raceGroups)
+                .filter(raceNum => raceNum !== 'Unknown')
+                .sort((a, b) => parseInt(b) - parseInt(a))
+                .slice(0, 10); // Show last 10 races
+
+            return (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+                    <h2 className="text-xl font-bold mb-4">📋 Recent Race History</h2>
+                    
+                    <div className="space-y-4">
+                        {sortedRaces.map(raceNum => {
+                            const raceData = raceGroups[raceNum].sort((a, b) => a.time - b.time);
+                            const winner = raceData[0];
+                            
+                            return (
+                                <div key={raceNum} className="border dark:border-gray-600 rounded-lg p-4">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h3 className="font-bold">Race #{raceNum}</h3>
+                                        <button
+                                            onClick={() => onViewAdvancedStats(parseInt(raceNum))}
+                                            className="text-purple-600 hover:text-purple-800 text-sm bg-purple-100 hover:bg-purple-200 px-3 py-1 rounded"
+                                        >
+                                            View Advanced Stats
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                                        <span className="font-semibold text-green-600">Winner: {winner.car_name}</span>
+                                        <span className="ml-4 font-mono font-bold">{winner.time.toFixed(3)}s</span>
+                                        <span className="ml-4">{winner.speed.toFixed(2)} mph</span>
+                                    </div>
+
+                                    <div className="mt-3 overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-gray-100 dark:bg-gray-700">
+                                                <tr>
+                                                    <th className="p-2 text-left">Pos</th>
+                                                    <th className="p-2 text-left">Lane</th>
+                                                    <th className="p-2 text-left">Car Name</th>
+                                                    <th className="p-2 text-left">Time</th>
+                                                    <th className="p-2 text-left">Speed</th>
+                                                    <th className="p-2 text-left">Gap</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {raceData.map((record, index) => (
+                                                    <tr key={index} className={`border-b dark:border-gray-600 ${index === 0 ? 'bg-yellow-100 dark:bg-yellow-900' : ''}`}>
+                                                        <td className="p-2 font-bold">{index + 1}</td>
+                                                        <td className="p-2">{record.lane}</td>
+                                                        <td className="p-2">{record.car_name}</td>
+                                                        <td className="p-2 font-mono">{record.time.toFixed(3)}s</td>
+                                                        <td className="p-2">{record.speed.toFixed(2)} mph</td>
+                                                        <td className="p-2 font-mono">
+                                                            {index === 0 ? '--' : `+${(record.time - winner.time).toFixed(3)}s`}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        }
+
+        function App() {
+            const [isDarkMode, setIsDarkMode] = React.useState(true);
+            const [weather, setWeather] = React.useState({ temperature: '--', humidity: '--', lastUpdated: '--' });
+            const [raceInfo, setRaceInfo] = React.useState({ raceNumber: '-', trackState: 'Not Ready', componentStatus: 'Not Ready' });
+            const [components, setComponents] = React.useState({
+                'Central Server': 'ERROR',
+                'Finish Gate': 'ERROR',
+                'Start Gate': 'ERROR',
+                'Checkpoint Gate': 'ERROR',  // Added checkpoint gate
+                'I2C Bus': 'ERROR',
+                'Multiplexer': 'ERROR',
+                'Sensors': 'ERROR',
+                'GPIO Expander': 'ERROR'
+            });
+            const [cars, setCars] = React.useState(
+                Array.from({ length: 6 }, (_, i) => ({
+                    lane: i + 1,
+                    name: `car_lane${i + 1}_${new Date().toISOString().split('T')[0].replace(/-/g, '')}`,
+                    time: null,
+                    position: null,
+                    speed: null,
+                    weight: '',
+                    kineticEnergy: null,
+                    momentum: null
+                }))
+            );
+            const [leaderboard, setLeaderboard] = React.useState([]);
+            const [trackRecord, setTrackRecord] = React.useState(null);
+            const [fastestSpeed, setFastestSpeed] = React.useState(null);
+            const [totalRaces, setTotalRaces] = React.useState(0);
+            const [advancedStats, setAdvancedStats] = React.useState(null);
+            const [selectedRaceForStats, setSelectedRaceForStats] = React.useState(null);
+            const [checkpointAvailable, setCheckpointAvailable] = React.useState(false);
+            const [advancedLeaderboards, setAdvancedLeaderboards] = React.useState({});
+            const [selectedLeaderboard, setSelectedLeaderboard] = React.useState('fastest_time');
+
+            const updateComponentStatus = (components) => {
+                const allComponentsReady = Object.values(components).every(status => status === 'OK');
+                setRaceInfo(prev => ({
+                    ...prev,
+                    componentStatus: allComponentsReady ? 'Ready' : 'Not Ready'
+                }));
+            };
+
+            React.useEffect(() => {
+                document.documentElement.classList.toggle('dark', isDarkMode);
+
+                fetch('/get_weather_config')
+                    .then(response => response.json())
+                    .then(data => {
+                        weatherApiKey = data.api_key;
+                        weatherCityId = data.city_id;
+                        fetchWeatherData();
+                    })
+                    .catch(error => console.error('Error fetching weather config:', error));
+
+                function fetchWeatherData() {
+                    if (!weatherApiKey || !weatherCityId) {
+                        console.error('Weather API configuration not loaded');
+                        return;
+                    }
+                    fetch(`https://api.openweathermap.org/data/2.5/weather?id=${weatherCityId}&appid=${weatherApiKey}&units=imperial`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const temperature = Math.round(data.main.temp);
+                            const humidity = data.main.humidity;
+                            const lastUpdated = new Date().toLocaleTimeString();
+                            setWeather({ temperature, humidity, lastUpdated });
+                        })
+                        .catch(error => {
+                            console.error('Error fetching weather data:', error);
+                        });
+                }
+
+                fetchWeatherData();
+                const weatherInterval = setInterval(fetchWeatherData, 3 * 60 * 60 * 1000);
+
+                function checkCentralServerConnection() {
+                    fetch('/get_records')
+                        .then(response => {
+                            if (response.ok) {
+                                setComponents(prev => {
+                                    const newComponents = { ...prev, 'Central Server': 'OK' };
+                                    updateComponentStatus(newComponents);
+                                    return newComponents;
+                                });
+                            } else {
+                                throw new Error('Server response not OK');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error checking server status:', error);
+                            setComponents(prev => {
+                                const newComponents = { ...prev, 'Central Server': 'ERROR' };
+                                updateComponentStatus(newComponents);
+                                return newComponents;
+                            });
+                        });
+                }
+
+                checkCentralServerConnection();
+                const serverCheckInterval = setInterval(checkCentralServerConnection, 30000);
+
+                // Initialize data fetching
+                fetchAndUpdateLeaderboard();
+                fetchAdvancedStats();
+                fetchAdvancedLeaderboards();
+                checkCheckpointGate();
+                
+                // Set up periodic updates
+                const leaderboardInterval = setInterval(fetchAndUpdateLeaderboard, 30000);
+                const advancedLeaderboardsInterval = setInterval(fetchAdvancedLeaderboards, 60000); // Update every minute
+                const checkpointInterval = setInterval(checkCheckpointGate, 15000);
+
+                socket.on('race_state_update', (data) => {
+                    setRaceInfo(prev => ({
+                        raceNumber: data.current_race_number || '-',
+                        trackState: data.status,
+                        componentStatus: prev.componentStatus // Maintain the current component status
+                    }));
+                    if (data.finish_times) {
+                        setCars(cars => cars.map((car, index) => ({
+                            ...car,
+                            time: data.finish_times[index]
+                        })));
+                    }
+                    if (data.car_names) {
+                        setCars(cars => cars.map((car, index) => ({
+                            ...car,
+                            name: data.car_names[index]
+                        })));
+                    }
+                    if (data.status !== 'Placement' && data.status !== 'Finished') {
+                        setCars(cars => cars.map(car => ({
+                            ...car,
+                            position: null,
+                            speed: null
+                        })));
+                    }
+                    if (data.status === 'Finished') {
+                        fetchAndUpdateLeaderboard();
+                        currentRaceTimestamp = new Date().toISOString();
+                    }
+                });
+
+                socket.on('placement_update', (data) => {
+                    setCars(cars => cars.map(car => {
+                        const result = data.find(r => r.lane === car.lane);
+                        if (result) {
+                            return {
+                                ...car,
+                                time: result.time,
+                                position: result.place,
+                                speed: result.speed,
+                                winner: result.place === 1,
+                                tied: result.tied
+                            };
+                        }
+                        return car;
+						}));
+                });
+
+                socket.on('component_status_update', (data) => {
+                    setComponents(prev => {
+                        const newComponents = {
+                            ...prev,
+                            ...Object.fromEntries(Object.entries(data).map(([key, value]) => [key.replace('_', ' '), value]))
+                        };
+                        updateComponentStatus(newComponents);
+                        return newComponents;
+                    });
+                });
+
+                socket.on('leaderboard_update', setLeaderboard);
+
+                return () => {
+                    clearInterval(weatherInterval);
+                    clearInterval(serverCheckInterval);
+                    clearInterval(leaderboardInterval);
+                    clearInterval(advancedLeaderboardsInterval);
+                    clearInterval(checkpointInterval);
+                    socket.off('race_state_update');
+                    socket.off('placement_update');
+                    socket.off('component_status_update');
+                    socket.off('leaderboard_update');
+                };
+            }, [isDarkMode]);
+
+            const toggleTheme = () => {
+                setIsDarkMode(!isDarkMode);
+            };
+
+            const handleCarNameChange = (lane, name) => {
+                setCars(cars => cars.map(car => 
+                    car.lane === lane ? { ...car, name } : car
+                ));
+                // Automatically submit the updated car name
+                fetch('/update_car_names', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ car_names: cars.map(car => car.name) })
+                }).catch(error => {
+                    console.error('Error updating car names:', error);
+                });
+            };
+
+            const handleWeightChange = (lane, weight) => {
+                setCars(cars => cars.map(car => {
+                    if (car.lane === lane) {
+                        const parsedWeight = parseFloat(weight);
+                        const speed = car.speed;
+                        let kineticEnergy = null;
+                        let momentum = null;
+                        if (!isNaN(parsedWeight) && speed !== null) {
+                            const mass = parsedWeight / 1000; // g to kg
+                            const velocity = speed * 0.44704; // mph to m/s
+                            kineticEnergy = 0.5 * mass * velocity * velocity;
+                            momentum = mass * velocity; // p = m * v
+                        }
+                        return { ...car, weight, kineticEnergy, momentum };
+                    }
+                    return car;
+                }));
+                updateWeightAndKE(lane, weight);
+            };
+
+            const updateWeightAndKE = (lane, weight) => {
+                const car = cars.find(c => c.lane === lane);
+                if (!car) return;
+
+                const parsedWeight = parseFloat(weight);
+                const speed = car.speed;
+                let ke = null;
+                let momentum = null;
+
+                if (!isNaN(parsedWeight) && speed !== null) {
+                    const mass = parsedWeight / 1000; // g to kg
+                    const velocity = speed * 0.44704; // mph to m/s
+                    ke = 0.5 * mass * velocity * velocity;
+                    momentum = mass * velocity; // p = m * v
+                }
+
+                fetch('/update_weight_and_ke', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        timestamp: currentRaceTimestamp,
+                        lane: lane,
+                        weight: parsedWeight,
+                        kinetic_energy: ke,
+                        momentum: momentum
+                    })
+                }).then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        console.log('Weight, KE, and Momentum updated successfully');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating weight, KE, and Momentum:', error);
+                });
+            };
+
+            const fetchAndUpdateLeaderboard = () => {
+                fetch('/get_records')
+                    .then(response => response.json())
+                    .then(data => {
+                        setLeaderboard(data);
+                        
+                        // Calculate top records from leaderboard data
+                        if (data && data.length > 0) {
+                            const bestTime = Math.min(...data.map(entry => entry.time));
+                            const fastestSpeedEntry = data.reduce((fastest, entry) => 
+                                entry.speed > fastest.speed ? entry : fastest
+                            );
+                            
+                            setTrackRecord(bestTime);
+                            setFastestSpeed(fastestSpeedEntry.speed);
+                            setTotalRaces(data.length);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching leaderboard:', error);
+                    });
+            };
+
+            const fetchAdvancedStats = (raceId = null) => {
+                const url = raceId ? `/get_stats/${raceId}` : '/get_stats';
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        setAdvancedStats(data);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching advanced stats:', error);
+                        setAdvancedStats(null);
+                    });
+            };
+
+            const fetchAdvancedLeaderboards = () => {
+                fetch('/get_advanced_leaderboards')
+                    .then(response => response.json())
+                    .then(data => {
+                        setAdvancedLeaderboards(data);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching advanced leaderboards:', error);
+                        // Set empty data structure on error
+                        setAdvancedLeaderboards({
+                            fastest_time: [],
+                            fastest_speed: [],
+                            checkpoint_speed: [],
+                            finish_speed: [],
+                            best_acceleration: [],
+                            max_force: [],
+                            best_gforce: [],
+                            terminal_velocity: [],
+                            highest_potential_energy: [],
+                            highest_kinetic_energy: [],
+                            most_work_done: [],
+                            most_power: [],
+                            highest_efficiency: [],
+                            mechanical_efficiency: [],
+                            energy_conversion: [],
+                            lowest_friction: [],
+                            momentum_masters: [],
+                            momentum_change: [],
+                            impulse_champions: [],
+                            jerk_analysis: [],
+                            coefficient_restitution: [],
+                            lowest_energy_loss: [],
+                            rolling_resistance: []
+                        });
+                    });
+            };
+
+            const checkCheckpointGate = () => {
+                // Check if checkpoint gate is responding
+                fetch('/checkpoint_status')
+                    .then(response => response.json())
+                    .then(data => {
+                        setCheckpointAvailable(data.available);
+                        setComponents(prev => ({
+                            ...prev,
+                            'Checkpoint Gate': data.available ? 'OK' : 'ERROR'
+                        }));
+                    })
+                    .catch(error => {
+                        console.error('Error checking checkpoint gate:', error);
+                        setCheckpointAvailable(false);
+                        setComponents(prev => ({
+                            ...prev,
+                            'Checkpoint Gate': 'ERROR'
+                        }));
+                    });
+            };
+
+            const handleViewAdvancedStats = (raceId) => {
+                setSelectedRaceForStats(raceId);
+                fetchAdvancedStats(raceId);
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-100 dark:bg-gray-900 dark:text-white transition-colors duration-300">
+                    <NavBar toggleTheme={toggleTheme} isDarkMode={isDarkMode} />
+                    <div className="container mx-auto px-4 py-8">
+                        <WeatherInfo {...weather} />
+                        <RaceInfo {...raceInfo} />
+                        <ComponentStatus components={components} />
+                        
+                        {/* Top Records Dashboard */}
+                        <TopRecordsPanel 
+                            trackRecord={trackRecord}
+                            fastestSpeed={fastestSpeed}
+                            totalRaces={totalRaces}
+                        />
+                        
+                        {/* Performance Analytics Summary */}
+                        <StatisticsSummary advancedLeaderboards={advancedLeaderboards} />
+                        
+                        <RaceResults 
+                            cars={cars} 
+                            onCarNameChange={handleCarNameChange}
+                            onWeightChange={handleWeightChange}
+                        />
+                        
+                        {/* Enhanced Race History with Advanced Stats */}
+                        <RaceHistoryPanel 
+                            leaderboard={leaderboard}
+                            onViewAdvancedStats={handleViewAdvancedStats}
+                            checkpointAvailable={checkpointAvailable}
+                        />
+                        
+                        {/* Advanced Stats Panel */}
+                        {selectedRaceForStats && (
+                            <AdvancedStatsPanel 
+                                stats={advancedStats}
+                                race={selectedRaceForStats}
+                                onClose={() => setSelectedRaceForStats(null)}
+                            />
+                        )}
+                        
+                        <Leaderboard entries={leaderboard} />
+                        
+                        {/* Advanced Leaderboards */}
+                        <AdvancedLeaderboards 
+                            advancedLeaderboards={advancedLeaderboards}
+                            selectedLeaderboard={selectedLeaderboard}
+                            onLeaderboardChange={setSelectedLeaderboard}
+                        />
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+
+        // Function to generate default car names
+        function getDefaultCarName(lane) {
+            const now = new Date();
+            const time = now.toTimeString().split(' ')[0].replace(/:/g, '');
+            const date = now.toISOString().split('T')[0].replace(/-/g, '');
+            return `car_lane${lane}_${time}_${date}`;
+        }
+
+        // Set default car names when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            for (let lane = 1; lane <= 6; lane++) {
+                const element = document.getElementById('car-' + lane);
+                if (element) {
+                    element.value = getDefaultCarName(lane);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

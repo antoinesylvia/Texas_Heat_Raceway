@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration - Hot Wheels Racing System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <style>
+        .nav-bar {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            padding: 15px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-bar ul {
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-bar a {
+            color: #FFFFFF;
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            padding: 8px 16px;
+            border-radius: 6px;
+        }
+
+        .nav-bar a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .config-section {
+            transition: all 0.3s ease;
+        }
+
+        .config-section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <nav class="nav-bar">
+        <ul>
+            <li><a href="/">Main Dashboard</a></li>
+            <li><a href="/race_editor">Race Editor</a></li>
+            <li><a href="/templates/config.html">Configuration</a></li>
+        </ul>
+    </nav>
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function ConfigItem({ label, name, value, onChange, type = "text", comment = "" }) {
+            return (
+                <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {label}
+                    </label>
+                    <input
+                        type={type}
+                        name={name}
+                        value={value}
+                        onChange={(e) => onChange(name, e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <p className="text-sm text-gray-600 mt-1">{comment}</p>
+                </div>
+            );
+        }
+
+        function ConfigSection({ title, children }) {
+            return (
+                <div className="config-section bg-white p-6 rounded-lg shadow-md mb-6">
+                    <h2 className="text-xl font-bold mb-4 text-gray-800">{title}</h2>
+                    {children}
+                </div>
+            );
+        }
+
+        function App() {
+            const [config, setConfig] = useState({});
+            const [loading, setLoading] = useState(true);
+            const [saving, setSaving] = useState(false);
+            const [message, setMessage] = useState({ type: '', text: '' });
+
+            useEffect(() => {
+                fetchConfig();
+            }, []);
+
+            const fetchConfig = async () => {
+                try {
+                    const response = await fetch('/get_config');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setConfig(data);
+                    }
+                } catch (error) {
+                    console.error('Error fetching config:', error);
+                    setMessage({ type: 'error', text: 'Failed to load configuration' });
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleConfigChange = (key, value) => {
+                setConfig(prev => ({ ...prev, [key]: value }));
+            };
+
+            const saveConfig = async () => {
+                setSaving(true);
+                try {
+                    const response = await fetch('/update_config', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(config),
+                    });
+
+                    if (response.ok) {
+                        setMessage({ type: 'success', text: 'Configuration saved successfully!' });
+                        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+                    } else {
+                        setMessage({ type: 'error', text: 'Failed to save configuration' });
+                    }
+                } catch (error) {
+                    console.error('Error saving config:', error);
+                    setMessage({ type: 'error', text: 'Error saving configuration' });
+                } finally {
+                    setSaving(false);
+                }
+            };
+
+            const resetConfig = async () => {
+                if (confirm('Are you sure you want to reset all configuration to defaults?')) {
+                    try {
+                        // This would typically call a reset endpoint
+                        setMessage({ type: 'info', text: 'Configuration reset functionality would be implemented here' });
+                    } catch (error) {
+                        setMessage({ type: 'error', text: 'Failed to reset configuration' });
+                    }
+                }
+            };
+
+            if (loading) {
+                return (
+                    <div className="container mx-auto px-4 py-8">
+                        <div className="flex justify-center items-center py-8">
+                            <div className="text-center">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                                <p className="text-gray-600">Loading configuration...</p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="container mx-auto px-4 py-8">
+                    <div className="mb-8">
+                        <h1 className="text-4xl font-bold text-gray-800 mb-2">
+                            System Configuration
+                        </h1>
+                        <p className="text-gray-600">
+                            Configure the Hot Wheels Racing System parameters
+                        </p>
+                    </div>
+
+                    {message.text && (
+                        <div className={`mb-6 p-4 rounded-md ${
+                            message.type === 'success' ? 'bg-green-100 border border-green-400 text-green-700' :
+                            message.type === 'error' ? 'bg-red-100 border border-red-400 text-red-700' :
+                            'bg-blue-100 border border-blue-400 text-blue-700'
+                        }`}>
+                            {message.text}
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <ConfigSection title="Track Configuration">
+                            <ConfigItem 
+                                label="Track Length (inches)"
+                                name="TRACK_LENGTH_INCHES"
+                                value={config.TRACK_LENGTH_INCHES || ''}
+                                onChange={handleConfigChange}
+                                type="number"
+                                comment="Total length of the track in inches"
+                            />
+                            <ConfigItem 
+                                label="Incline Height (feet)"
+                                name="INCLINE_HEIGHT_FEET"
+                                value={config.INCLINE_HEIGHT_FEET || ''}
+                                onChange={handleConfigChange}
+                                type="number"
+                                comment="Height of the starting incline"
+                            />
+                            <ConfigItem 
+                                label="Checkpoint Distance (feet)"
+                                name="CHECKPOINT_DISTANCE"
+                                value={config.CHECKPOINT_DISTANCE || ''}
+                                onChange={handleConfigChange}
+                                type="number"
+                                comment="Distance from start to checkpoint gate"
+                            />
+                        </ConfigSection>
+
+                        <ConfigSection title="Race Settings">
+                            <ConfigItem 
+                                label="Number of Lanes"
+                                name="NUM_LANES"
+                                value={config.NUM_LANES || ''}
+                                onChange={handleConfigChange}
+                                type="number"
+                                comment="Number of racing lanes"
+                            />
+                            <ConfigItem 
+                                label="Timeout Duration (seconds)"
+                                name="TIMEOUT_DURATION"
+                                value={config.TIMEOUT_DURATION || ''}
+                                onChange={handleConfigChange}
+                                type="number"
+                                comment="Race timeout for crash detection"
+                            />
+                            <ConfigItem 
+                                label="Max Race Duration (seconds)"
+                                name="MAX_RACE_DURATION"
+                                value={config.MAX_RACE_DURATION || ''}
+                                onChange={handleConfigChange}
+                                type="number"
+                                comment="Maximum allowed race time"
+                            />
+                        </ConfigSection>
+
+                        <ConfigSection title="Server Configuration">
+                            <ConfigItem 
+                                label="Host"
+                                name="HOST"
+                                value={config.HOST || ''}
+                                onChange={handleConfigChange}
+                                comment="Server IP address"
+                            />
+                            <ConfigItem 
+                                label="Port"
+                                name="PORT"
+                                value={config.PORT || ''}
+                                onChange={handleConfigChange}
+                                type="number"
+                                comment="Server port number"
+                            />
+                            <ConfigItem 
+                                label="Test Mode"
+                                name="TEST_MODE"
+                                value={config.TEST_MODE || ''}
+                                onChange={handleConfigChange}
+                                comment="Enable test mode (true/false)"
+                            />
+                        </ConfigSection>
+
+                        <ConfigSection title="Physics Constants">
+                            <ConfigItem 
+                                label="Air Density (kg/m³)"
+                                name="AIR_DENSITY"
+                                value={config.AIR_DENSITY || ''}
+                                onChange={handleConfigChange}
+                                type="number"
+                                comment="Static air density for calculations"
+                            />
+                            <ConfigItem 
+                                label="Use Dynamic Air Density"
+                                name="USE_DYNAMIC_AIR_DENSITY"
+                                value={config.USE_DYNAMIC_AIR_DENSITY || ''}
+                                onChange={handleConfigChange}
+                                comment="Use weather API for dynamic air density (true/false)"
+                            />
+                            <ConfigItem 
+                                label="Weather API Key"
+                                name="WEATHER_API_KEY"
+                                value={config.WEATHER_API_KEY || ''}
+                                onChange={handleConfigChange}
+                                comment="OpenWeatherMap API key for dynamic conditions"
+                            />
+                        </ConfigSection>
+                    </div>
+
+                    <div className="flex justify-center space-x-4 mt-8">
+                        <button 
+                            onClick={saveConfig}
+                            disabled={saving}
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                            {saving ? 'Saving...' : 'Save Configuration'}
+                        </button>
+                        <button 
+                            onClick={resetConfig}
+                            className="bg-red-500 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                        >
+                            Reset to Defaults
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

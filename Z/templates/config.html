@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration</title>
+    <script src="./css/tailwind.css"></script>
+    <script src="./js/react.development.js"></script>
+    <script src="./js/react-dom.development.js"></script>
+    <script src="./js/babel.min.js"></script>
+    <script src="./js/socket.io.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#28b463',
+                        secondary: '#219a52',
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        
+		:root {
+            -webkit-text-size-adjust: 100%;
+            -moz-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
+		
+		
+		#root {
+            width: 100%;
+        }
+
+        .nav-bar {
+            background-color: #28b463;
+            padding: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            position: relative; /* Added for theme-toggle positioning */
+        }
+
+        .nav-bar ul {
+            display: flex;
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .nav-bar li {
+            margin: 0 15px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-bar li:not(:last-child)::after {
+            content: '|';
+            color: #ffffff;
+            margin-left: 15px;
+        }
+
+        .nav-bar a {
+            color: #FFFFFF;
+            text-decoration: none;
+            font-size: 18px;
+            transition: color 0.3s ease;
+        }
+
+        .nav-bar a:hover {
+            color: #17202a;
+        }
+
+        .theme-toggle {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 5px 10px;
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+    </style>
+</head>
+<body class="dark:bg-gray-900 dark:text-white transition-colors duration-300">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        function NavBar({ toggleTheme, isDarkMode }) {
+            return (
+                <nav className="nav-bar">
+                    <ul>
+                        <li><a href="main.html" target="_blank" rel="noopener noreferrer">Main Run</a></li>
+                        <li><a href="race_editor.html" target="_blank" rel="noopener noreferrer">Race Editor</a></li>
+                        <li><a href="tourney_bracketbuster.html" target="_blank" rel="noopener noreferrer">Tournament - Bracket Buster</a></li>
+                        <li><a href="tourney_faceoff.html" target="_blank" rel="noopener noreferrer">Tournament - Face Off</a></li>
+                        <li><a href="config.html" style={{ color: '#000' }}>Configuration</a></li>
+                    </ul>
+                    <button onClick={toggleTheme} className="theme-toggle">
+                        {isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+                    </button>
+                </nav>
+            );
+        }
+
+        function ConfigSection({ title, children }) {
+            return (
+                <div className="bg-gray-100 dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
+                    <h2 className="text-xl font-bold mb-4">{title}</h2>
+                    {children}
+                </div>
+            );
+        }
+
+        function ConfigItem({ label, name, value, onChange, type = "text", comment }) {
+            const id = `config-${name.toLowerCase().replace(/\s+/g, '-')}`;
+			if (type === "boolean") {
+                return (
+                    <div className="mb-4">
+                        <label className="flex items-center">
+                            <input
+                                type="checkbox"
+								id={id}
+                                name={name}
+                                checked={value}
+                                onChange={(e) => onChange(name, e.target.checked)}
+                                className="form-checkbox h-5 w-5 text-primary"
+                            />
+                            <span className="ml-2">{label}</span>
+                        </label>
+                        {comment && <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{comment}</p>}
+                    </div>
+                );
+            }
+            return (
+                <div className="mb-4">
+                    <label htmlFor={name} className="block mb-2">{label}</label>
+                    <input
+                        type={type}
+                        id={name}
+                        name={name}
+                        value={value}
+                        onChange={(e) => onChange(name, e.target.value)}
+                        className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+                    />
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{comment}</p>
+                </div>
+            );
+        }
+
+        function App() {
+			const [isDarkMode, setIsDarkMode] = React.useState(true);
+			const [config, setConfig] = React.useState({});
+
+			React.useEffect(() => {
+				document.documentElement.classList.toggle('dark', isDarkMode);
+			}, [isDarkMode]);
+
+			React.useEffect(() => {
+				// Fetch configuration from server
+				fetch('/get_config')
+					.then(response => response.json())
+					.then(data => setConfig(data))
+					.catch(error => console.error('Error fetching config:', error));
+			}, []);
+
+            const toggleTheme = () => {
+                setIsDarkMode(!isDarkMode);
+                document.documentElement.classList.toggle('dark');
+            };
+            
+            const resetConfig = () => {
+                if (confirm('Are you sure you want to reset all configuration to defaults? This cannot be undone.')) {
+                    fetch('/reset_config', { method: 'POST' })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                alert('Configuration reset successfully. The page will now reload.');
+                                window.location.reload();
+                            } else {
+                                alert('Error resetting configuration.');
+                            }
+                        })
+                        .catch((error) => {
+                            console.error('Error:', error);
+                            alert('Error resetting configuration.');
+                        });
+                }
+            };
+
+            const handleConfigChange = (name, value) => {
+                setConfig(prevConfig => ({
+                    ...prevConfig,
+                    [name]: value
+                }));
+            };
+
+            const saveConfig = () => {
+                // Send updated config to server
+                fetch('/update_config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(config),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert('Configuration saved successfully!');
+                    } else {
+                        alert('Error saving configuration.');
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    alert('Error saving configuration.');
+                });
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-100 dark:bg-gray-900 dark:text-white transition-colors duration-300">
+                    <NavBar toggleTheme={toggleTheme} isDarkMode={isDarkMode} />
+                    <div className="container mx-auto p-4">
+                        <h1 className="text-3xl font-bold mb-6">Texas Heat Raceway Configuration</h1>
+                        <ConfigSection title="Finish Gate Settings">
+                            <ConfigItem 
+                                label="Track Length (inches)" 
+                                name="TRACK_LENGTH_INCHES" 
+                                value={config.TRACK_LENGTH_INCHES} 
+                                onChange={handleConfigChange} 
+                                type="number"
+                                comment="Length of the race track in inches"
+                            />
+                            <ConfigItem 
+                                label="Timeout Duration (seconds)" 
+                                name="TIMEOUT_DURATION" 
+                                value={config.TIMEOUT_DURATION} 
+                                onChange={handleConfigChange} 
+                                type="number"
+                                comment="Maximum time (in seconds) to wait for all cars to finish"
+                            />
+                            <ConfigItem 
+                                label="Initial Race in Progress" 
+                                name="INITIAL_RACE_IN_PROGRESS" 
+                                value={config.INITIAL_RACE_IN_PROGRESS} 
+                                onChange={handleConfigChange} 
+                                type="boolean"
+                                comment="Test the finish gate independently when 'True', 'False' relies on communication with the central server code"
+                            />
+                            <ConfigItem 
+                                label="Test Mode" 
+                                name="TEST_MODE" 
+                                value={config.TEST_MODE} 
+                                onChange={handleConfigChange} 
+                                type="boolean"
+                                comment="Use the same value as INITIAL_RACE_IN_PROGRESS for test mode"
+                            />
+                        </ConfigSection>
+                        <ConfigSection title="Finish Gate Thresholds">
+                            <ConfigItem 
+                                label="Light Sensor Threshold" 
+                                name="LIGHT_SENSOR_THRESHOLD" 
+                                value={config.LIGHT_SENSOR_THRESHOLD} 
+                                onChange={handleConfigChange} 
+                                type="number"
+                                comment="Static threshold for light detection (used when adaptive threshold is off)"
+                            />
+                            <ConfigItem 
+                                label="Use Adaptive Threshold" 
+                                name="USE_ADAPTIVE_THRESHOLD" 
+                                value={config.USE_ADAPTIVE_THRESHOLD} 
+                                onChange={handleConfigChange} 
+                                type="boolean"
+                                comment="Uncheck (set false) to use static threshold, check (set true) for dynamic threshold options"
+                            />
+                            {config.USE_ADAPTIVE_THRESHOLD && (
+                                <>
+                                    <ConfigItem 
+                                        label="Use Dynamic Threshold" 
+                                        name="USE_DYNAMIC_THRESHOLD" 
+                                        value={config.USE_DYNAMIC_THRESHOLD} 
+                                        onChange={handleConfigChange} 
+                                        type="boolean"
+                                        comment="Check (set true) use dynamic threshold, False to use percentage-based reduction"
+                                    />
+                                    {config.USE_DYNAMIC_THRESHOLD ? (
+                                        <ConfigItem 
+                                            label="Baseline Samples" 
+                                            name="BASELINE_SAMPLES" 
+                                            value={config.BASELINE_SAMPLES} 
+                                            onChange={handleConfigChange} 
+                                            type="number"
+                                            comment="Number of samples used to establish the baseline light level"
+                                        />
+                                    ) : (
+                                        <ConfigItem 
+                                            label="Light Reduction Percentage" 
+                                            name="LIGHT_REDUCTION_PERCENTAGE" 
+                                            value={config.LIGHT_REDUCTION_PERCENTAGE} 
+                                            onChange={handleConfigChange} 
+                                            type="number"
+                                            comment="Percentage of light reduction required to trigger finish detection. To use: USE_ADAPTIVE_THRESHOLD = True and USE_DYNAMIC_THRESHOLD = False"
+                                        />
+                                    )}
+                                </>
+                            )}
+                        </ConfigSection>
+                        <ConfigSection title="Waveshare Screen Settings">
+                            <ConfigItem 
+                                label="Screen Width" 
+                                name="SCREEN_WIDTH" 
+                                value={config.SCREEN_WIDTH} 
+                                onChange={handleConfigChange} 
+                                type="number"
+                                comment="Width of the waveshare display screen in pixels"
+                            />
+                            <ConfigItem 
+                                label="Screen Height" 
+                                name="SCREEN_HEIGHT" 
+                                value={config.SCREEN_HEIGHT} 
+                                onChange={handleConfigChange} 
+                                type="number"
+                                comment="Height of the waveshare display screen in pixels"
+                            />
+                            <ConfigItem 
+                                label="Fullscreen" 
+                                name="FULLSCREEN" 
+                                value={config.FULLSCREEN} 
+                                onChange={handleConfigChange} 
+                                type="boolean"
+                                comment="Whether to run the display in fullscreen mode"
+                            />
+                        </ConfigSection>
+                        <ConfigSection title="Central Server Settings">
+                            <ConfigItem 
+                                label="Database Name" 
+                                name="DB_NAME" 
+                                value={config.DB_NAME} 
+                                onChange={handleConfigChange}
+                                comment="Name of the SQLite database file"
+                            />
+                            <ConfigItem 
+                                label="Number of Lanes" 
+                                name="NUM_LANES" 
+                                value={config.NUM_LANES} 
+                                onChange={handleConfigChange} 
+                                type="number"
+                                comment="Number of lanes on the race track"
+                            />
+                            <ConfigItem 
+                                label="Max Retries" 
+                                name="MAX_RETRIES" 
+                                value={config.MAX_RETRIES} 
+                                onChange={handleConfigChange} 
+                                type="number"
+                                comment="Number of retries if fail"
+                            />
+                            <ConfigItem 
+                                label="Retry Delay (seconds)" 
+                                name="RETRY_DELAY" 
+                                value={config.RETRY_DELAY} 
+                                onChange={handleConfigChange} 
+                                type="number"
+                                comment="Wait X seconds between retries"
+                            />
+                            <ConfigItem 
+                                label="Host" 
+                                name="HOST" 
+                                value={config.HOST} 
+                                onChange={handleConfigChange}
+                                comment="Server listens on all network interfaces"
+                            />
+                            <ConfigItem 
+                                label="Port" 
+                                name="PORT" 
+                                value={config.PORT} 
+                                onChange={handleConfigChange} 
+                                type="number"
+                                comment="Port number for the server to listen on"
+                            />
+                            <ConfigItem 
+                                label="Server Hostname" 
+                                name="SERVER_HOSTNAME" 
+                                value={config.SERVER_HOSTNAME} 
+                                onChange={handleConfigChange}
+                                comment="Hostname for clients to connect to (localhost)"
+                            />
+                        </ConfigSection>
+                        <ConfigSection title="Shared Settings">
+                            <ConfigItem 
+                                label="Central Server URL" 
+                                name="CENTRAL_SERVER_URL" 
+                                value={config.CENTRAL_SERVER_URL} 
+                                onChange={handleConfigChange}
+                                comment="Full URL for connecting to the central server"
+                            />
+                        </ConfigSection>
+                        <ConfigSection title="Weather API Configuration">
+                            <ConfigItem 
+                                label="Weather API Key" 
+                                name="WEATHER_API_KEY" 
+                                value={config.WEATHER_API_KEY} 
+                                onChange={handleConfigChange}
+                                comment="Replace with your actual API key"
+                            />
+                            <ConfigItem 
+                                label="Weather City ID" 
+                                name="WEATHER_CITY_ID" 
+                                value={config.WEATHER_CITY_ID} 
+                                onChange={handleConfigChange}
+                                comment="City ID for Irving, Texas"
+                            />
+                        </ConfigSection>
+                        <div className="flex space-x-4 mt-6">
+                            <button className="bg-primary hover:bg-secondary text-white font-bold py-2 px-4 rounded transition-colors duration-300" onClick={saveConfig}>
+                                Save Configuration to Database
+                            </button>
+                            <button className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors duration-300" onClick={resetConfig}>
+                                Reset to Settings Defaults from Config File
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

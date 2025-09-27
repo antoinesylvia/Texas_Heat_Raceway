@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bracket Buster!</title>
+    <script src="./js/react.development.js"></script>
+    <script src="./js/react-dom.development.js"></script>
+    <script src="./js/babel.min.js"></script>
+    <script src="./css/tailwind.css"></script>
+    <script src="./js/chart.js"></script>
+    <script src="./js/react-confetti.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#2d3447',
+                        darkSecondary: '#2d3447',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+		@media print {
+			.no-print {
+				display: none;
+			}
+			body {
+				font-size: 12px;
+			}
+		}
+		@media (max-width: 640px) {
+			table {
+				font-size: 12px;
+			}
+			.racers-column {
+				width: 30%;
+			}
+			.points-column {
+				width: 17%;
+			}
+		}
+		.highlight {
+			background-color: #32ab6e !important;
+		}
+		.dark .highlight {
+			background-color: #32ab6e !important;
+		}
+		.no-arrow {
+			appearance: none;
+			-webkit-appearance: none;
+			-moz-appearance: none;
+			background: none;
+			padding-right: 20px;
+		}
+		.nav-bar {
+			background-color: #28b463;
+			padding: 15px 0;
+			box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			position: relative;
+			z-index: 1000;  /* Increased z-index */
+		}
+		.nav-bar ul {
+			display: flex;
+			list-style-type: none;
+			margin: 0;
+			padding: 0;
+			z-index: 1001;  /* Higher than .nav-bar */
+		}
+		.nav-bar li {
+			margin: 0;
+			padding: 0 15px;
+			display: flex;
+			align-items: center;
+			z-index: 1002;  /* Higher than .nav-bar ul */
+		}
+		.nav-bar li:not(:last-child)::after {
+			content: '|';
+			color: #ffffff;
+			margin-left: 15px;
+		}
+		.nav-bar a {
+			color: #FFFFFF;
+			text-decoration: none;
+			font-size: 18px;
+			transition: color 0.3s ease;
+			z-index: 1003;  /* Higher than .nav-bar li */
+		}
+		.nav-bar a:hover {
+			color: #17202a;
+		}
+		.theme-toggle {
+			background: none;
+			border: none;
+			color: white;
+			cursor: pointer;
+			font-size: 16px;
+			padding: 5px 10px;
+			position: absolute;
+			right: 20px;
+			z-index: 1004;  /* Highest in the navbar */
+		}
+		
+		.fullscreen-bg {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100vw;
+			height: 100vh;
+			background-size: cover;
+			background-position: center;
+			background-repeat: no-repeat;
+			z-index: 1;  /* Lower than everything else */
+		}
+	</style>
+</head>
+<body class="transition-colors duration-300 bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-white"> 
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useRef } = React;
+        const ReactConfetti = window.ReactConfetti;
+
+        function NavBar({ toggleTheme, isDarkMode }) {
+            return (
+                <nav className="nav-bar">
+                    <ul>
+                        <li><a href="main.html" target="_blank" rel="noopener noreferrer">Main Run</a></li>
+                        <li><a href="tourney_bracketbuster.html" style={{ color: '#000' }}>Tournament - Bracket Buster</a></li>
+                        <li><a href="tourney_faceoff.html" target="_blank" rel="noopener noreferrer">Tournament - Face Off</a></li>
+                        <li><a href="config.html" target="_blank" rel="noopener noreferrer">Configuration</a></li>
+                    </ul>
+                    <button onClick={toggleTheme} className="theme-toggle">
+                        {isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+                    </button>
+                </nav>
+            );
+        }
+
+        function App() {
+            const [isDarkMode, setIsDarkMode] = useState(() => {
+                const saved = localStorage.getItem('darkMode');
+                return saved ? JSON.parse(saved) : true;
+            });
+            const [racerCount, setRacerCount] = useState(null);
+            const [cars, setCars] = useState([]);
+            const [tournamentMode, setTournamentMode] = useState(false);
+            const [currentRound, setCurrentRound] = useState(1);
+            const [viewingRound, setViewingRound] = useState(1);
+            const [allRounds, setAllRounds] = useState([]);
+            const [champion, setChampion] = useState(null);
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+
+            useEffect(() => {
+                localStorage.setItem('cars', JSON.stringify(cars));
+                localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
+                document.documentElement.classList.toggle('dark', isDarkMode);
+                updateChart();
+            }, [cars, isDarkMode]);
+
+            const handleRacerCountChange = (count) => {
+                setRacerCount(count);
+                setCars(Array.from({length: count}, (_, i) => ({ 
+                    id: i + 1, 
+                    name: `Car-${i + 1}`,
+                    seed: i + 1
+                })));
+            };
+
+            const handleCarNameChange = (id, newName) => {
+                setCars(prevCars => prevCars.map(car => car.id === id ? { ...car, name: newName } : car));
+                
+                setAllRounds(prevRounds => prevRounds.map(round => 
+                    round.map(matchup => ({
+                        ...matchup,
+                        cars: matchup.cars.map(car => car.id === id ? { ...car, name: newName } : car)
+                    }))
+                ));
+                setChampion(prevChampion => 
+                    prevChampion && prevChampion.id === id ? { ...prevChampion, name: newName } : prevChampion
+                );
+            };
+
+            const handleResultChange = (carId, heat, value, matchupId) => {
+                setAllRounds(prevRounds => {
+                    const updatedRounds = [...prevRounds];
+                    const roundIndex = currentRound - 1;
+                    const matchupIndex = updatedRounds[roundIndex].findIndex(m => m.id === matchupId);
+                    
+                    if (!updatedRounds[roundIndex][matchupIndex].results) {
+                        updatedRounds[roundIndex][matchupIndex].results = {};
+                    }
+                    if (!updatedRounds[roundIndex][matchupIndex].results[heat]) {
+                        updatedRounds[roundIndex][matchupIndex].results[heat] = {};
+                    }
+                    updatedRounds[roundIndex][matchupIndex].results[heat][carId] = value;
+                    
+                    const matchup = updatedRounds[roundIndex][matchupIndex];
+                    const allHeatsComplete = [1, 2, 3].every(h => 
+                        matchup.cars.every(car => matchup.results[h]?.[car.id])
+                    );
+
+                    if (allHeatsComplete) {
+                        const winner = getWinner(roundIndex, matchupIndex);
+                        if (winner) {
+                            advanceWinner(updatedRounds, winner, roundIndex, matchupIndex);
+                        }
+                    }
+
+                    const allMatchupsComplete = updatedRounds[roundIndex].every(m => 
+                        [1, 2, 3].every(h => m.cars.every(car => m.results[h]?.[car.id]))
+                    );
+
+                    if (allMatchupsComplete) {
+                        advanceToNextRound(updatedRounds);
+                    }
+
+                    return updatedRounds;
+                });
+            };
+
+            const getTotalPoints = (carId, matchup) => {
+                if (!matchup.results) return 0;
+                return [1, 2, 3].reduce((total, heat) => {
+                    const points = parseInt(matchup.results[heat]?.[carId]);
+                    return total + (isNaN(points) ? 0 : points);
+                }, 0);
+            };
+
+            const getAveragePoints = (carId, matchup) => {
+                const total = getTotalPoints(carId, matchup);
+                const count = [1, 2, 3].filter(heat => matchup.results?.[heat]?.[carId] !== undefined).length;
+                return count > 0 ? (total / count).toFixed(2) : '0.00';
+            };
+
+            const getHighestScore = (carId, matchup) => {
+                if (!matchup.results) return '0';
+                const scores = [1, 2, 3].map(heat => parseInt(matchup.results[heat]?.[carId])).filter(score => !isNaN(score));
+                return scores.length > 0 ? Math.max(...scores).toString() : '0';
+            };
+
+            const getAvailablePoints = (heat, carId, matchup) => {
+                const used = Object.values(matchup.results?.[heat] || {}).map(Number);
+                const currentValue = matchup.results?.[heat]?.[carId];
+                return [2, 1].filter(point => !used.includes(point) || point.toString() === currentValue);
+            };
+
+            const startTourney = () => {
+                setTournamentMode(true);
+                setCurrentRound(1);
+                setViewingRound(1);
+                const sortedCars = [...cars].sort((a, b) => a.seed - b.seed);
+                const initialMatchups = [];
+                
+                const createMatchup = (seed1, seed2, matchNumber) => {
+                    return {
+                        id: `R1M${matchNumber}`,
+                        cars: [sortedCars.find(car => car.seed === seed1), sortedCars.find(car => car.seed === seed2)],
+                        results: {}
+                    };
+                };
+
+                if (sortedCars.length === 8) {
+                    initialMatchups.push(
+                        createMatchup(1, 8, 1),
+                        createMatchup(4, 5, 2),
+                        createMatchup(3, 6, 3),
+                        createMatchup(2, 7, 4)
+                    );
+                } else if (sortedCars.length === 4) {
+                    initialMatchups.push(
+                        createMatchup(1, 4, 1),
+                        createMatchup(2, 3, 2)
+                    );
+                } else if (sortedCars.length === 2) {
+                    initialMatchups.push(createMatchup(1, 2, 1));
+                }
+
+                setAllRounds([initialMatchups]);
+                setChampion(null);
+            };
+
+            const getWinner = (roundIndex, matchIndex) => {
+                const matchup = allRounds[roundIndex][matchIndex];
+                if (!matchup) return null;
+                
+                const [car1, car2] = matchup.cars;
+                const points1 = getTotalPoints(car1.id, matchup);
+                const points2 = getTotalPoints(car2.id, matchup);
+                return points1 > points2 ? car1 : (points2 > points1 ? car2 : null);
+            };
+
+            const advanceWinner = (rounds, winner, roundIndex, matchIndex) => {
+                const nextRoundIndex = roundIndex + 1;
+                const nextMatchIndex = Math.floor(matchIndex / 2);
+
+                if (!rounds[nextRoundIndex]) {
+                    rounds[nextRoundIndex] = [];
+                }
+
+                if (!rounds[nextRoundIndex][nextMatchIndex]) {
+                    rounds[nextRoundIndex][nextMatchIndex] = {
+                        id: `R${nextRoundIndex + 1}M${nextMatchIndex + 1}`,
+                        cars: [],
+                        results: {}
+                    };
+                }
+
+                const existingCarIndex = rounds[nextRoundIndex][nextMatchIndex].cars.findIndex(car => car.id === winner.id);
+                if (existingCarIndex === -1) {
+                    rounds[nextRoundIndex][nextMatchIndex].cars.push({...winner});
+                } else {
+                    rounds[nextRoundIndex][nextMatchIndex].cars[existingCarIndex] = {...winner};
+                }
+            };
+
+            const advanceToNextRound = (rounds) => {
+                const nextRoundIndex = currentRound;
+                if (nextRoundIndex < Math.log2(racerCount)) {
+                    setCurrentRound(nextRoundIndex + 1);
+                    setViewingRound(nextRoundIndex + 1);
+                } else {
+                    const finalWinner = getWinner(nextRoundIndex - 1, 0);
+                    if (finalWinner) {
+                        setChampion(finalWinner);
+                    }
+                }
+            };
+
+            const resetTourney = () => {
+                setTournamentMode(false);
+                setCurrentRound(1);
+                setViewingRound(1);
+                setAllRounds([]);
+                setRacerCount(null);
+                setCars([]);
+                setChampion(null);
+            };
+
+            const toggleTheme = () => {
+                setIsDarkMode(prev => !prev);
+            };
+
+            const updateChart = () => {
+                console.log("Chart would be updated here");
+            };
+
+            const RacerList = React.memo(() => {
+                const [localNames, setLocalNames] = useState({});
+
+                const handleLocalNameChange = (id, name) => {
+                    setLocalNames(prev => ({ ...prev, [id]: name }));
+                };
+
+                const handleBlur = (id) => {
+                    if (localNames[id] !== undefined) {
+                        handleCarNameChange(id, localNames[id]);
+                    }
+                };
+
+                return (
+                    <div className="mb-4">
+                        <h3 className="text-xl font-semibold mb-2">Racers:</h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {cars.map(car => (
+                                <div key={car.id} className="flex items-center">
+                                    <span className="mr-2 font-bold">{car.seed}</span>
+                                    <input
+                                        type="text"
+                                        value={localNames[car.id] !== undefined ? localNames[car.id] : car.name}
+                                        onChange={(e) => handleLocalNameChange(car.id, e.target.value)}
+                                        onBlur={() => handleBlur(car.id)}
+                                        className={`p-2 border rounded flex-grow ${isDarkMode ? 'bg-darkSecondary text-gray-200' : 'bg-white text-gray-900'}`}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            });
+
+            const RaceTable = ({ matchup, isCurrentRound }) => {
+                const getLeadingCars = () => {
+                    if (!matchup.results || !matchup.results[1]) return [];
+                    const [car1, car2] = matchup.cars;
+                    if (!matchup.results[1][car1.id] || !matchup.results[1][car2.id]) return [];
+                    const points1 = getTotalPoints(car1.id, matchup);
+                    const points2 = getTotalPoints(car2.id, matchup);
+                    if (points1 === points2) {
+                        return [car1, car2];
+                    }
+                    return [points1 > points2 ? car1 : car2];
+                };
+
+                const leadingCars = getLeadingCars();
+
+                return (
+                    <div className="mb-8">
+                        <h2 className="text-xl font-bold mb-4">Match {matchup.id}</h2>
+                        <table className={`w-full shadow-md rounded ${isDarkMode ? 'bg-darkSecondary' : 'bg-white'}`}>
+                            <thead>
+                                <tr className={isDarkMode ? 'bg-gray-800' : 'bg-gray-200'}>
+                                    <th className="p-2 border">Seed</th>
+                                    <th className="p-2 border">Name - Vehicle</th>
+                                    <th className="p-2 border">Heat 1</th>
+                                    <th className="p-2 border">Heat 2</th>
+                                    <th className="p-2 border">Heat 3</th>
+                                    <th className="p-2 border">High Score</th>
+                                    <th className="p-2 border">Average Score</th>
+                                    <th className="p-2 border">Total Points</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {matchup.cars.map((car) => (
+                                    <tr key={car.id} className={`${leadingCars.some(leadingCar => leadingCar.id === car.id) ? 'highlight' : ''} ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                                        <td className="p-2 border font-bold">{car.seed}</td>
+                                        <td className="p-2 border">{car.name}</td>
+                                        {[1, 2, 3].map(heat => (
+                                            <td key={heat} className="p-2 border">
+                                                <select
+                                                    value={matchup.results?.[heat]?.[car.id] || ''}
+                                                    onChange={(e) => handleResultChange(car.id, heat, e.target.value, matchup.id)}
+                                                    className={`no-arrow w-full p-1 border rounded ${isDarkMode ? 'bg-gray-800 text-gray-200' : 'bg-white text-gray-900'}`}
+                                                    disabled={!isCurrentRound}
+                                                >
+                                                    <option value="">#</option>
+                                                    {getAvailablePoints(heat, car.id, matchup).map(point => (
+                                                        <option key={point} value={point}>{point}</option>
+                                                    ))}
+                                                </select>
+                                            </td>
+                                        ))}
+                                        <td className="p-2 border">{getHighestScore(car.id, matchup)}</td>
+                                        <td className="p-2 border">{getAveragePoints(car.id, matchup)}</td>
+                                        <td className="p-2 border font-bold">{getTotalPoints(car.id, matchup)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                );
+            };
+
+            const SetupScreen = () => {
+				const [localNames, setLocalNames] = useState({});
+				const [wallpaperUrl, setWallpaperUrl] = useState('./pics/jdm.jpg');
+
+				const handleLocalNameChange = (id, name) => {
+					setLocalNames(prev => ({ ...prev, [id]: name }));
+				};
+
+				const handleBlur = (id) => {
+					if (localNames[id] !== undefined) {
+						handleCarNameChange(id, localNames[id]);
+					}
+				};
+
+				return (
+					<>
+						<div 
+							className="fullscreen-bg" 
+							style={{ 
+								backgroundImage: `url(${wallpaperUrl})`,
+								zIndex: 1
+							}}
+						></div>
+						<div className="relative z-10 flex justify-center items-center" style={{ minHeight: 'calc(100vh - 150px)' }}>
+							<div className="space-y-6 max-w-2x1 w-full bg-white bg-opacity-90 dark:bg-gray-800 dark:bg-opacity-90 p-8 rounded-lg shadow-md">
+								<h1 className="text-3xl font-bold mb-6 text-center">Texas Heat Raceway - Bracket Buster!</h1>
+								<h2 className="text-2xl font-bold mb-4 text-center">Tournament Setup</h2>
+								<div>
+									<h3 className="text-xl font-semibold mb-2 text-center">Select number of racers:</h3>
+									<div className="flex justify-center space-x-4">
+										{[2, 4, 8].map(count => (
+											<button
+												key={count}
+												onClick={() => handleRacerCountChange(count)}
+												className={`px-4 py-2 rounded ${racerCount === count ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}
+											>
+												{count} Racers
+											</button>
+										))}
+									</div>
+								</div>
+								{racerCount && (
+									<div>
+										<h3 className="text-xl font-semibold mb-2 text-center">Name your racers:</h3>
+										<div className="grid grid-cols-1 gap-4">
+											{cars.map(car => (
+												<div key={car.id} className="flex items-center">
+													<span className="mr-2 font-bold">{car.seed}</span>
+													<input
+														type="text"
+														value={localNames[car.id] !== undefined ? localNames[car.id] : car.name}
+														onChange={(e) => handleLocalNameChange(car.id, e.target.value)}
+														onBlur={() => handleBlur(car.id)}
+														className="p-2 border rounded flex-grow dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
+														placeholder={`Car ${car.id}`}
+													/>
+												</div>
+											))}
+										</div>
+									</div>
+								)}
+								{racerCount && (
+									<div className="flex justify-center">
+										<button
+											onClick={startTourney}
+											className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 transition-colors duration-300"
+										>
+											Start Tournament
+										</button>
+									</div>
+								)}
+							</div>
+						</div>
+					</>
+				);
+			};
+
+
+
+
+
+
+
+            const TournamentBracket = () => {
+				const rounds = Math.log2(racerCount);
+				return (
+					<div className="mt-8">
+						<h2 className="text-2xl font-bold mb-4">Tournament Bracket</h2>
+						<div className="w-full">
+							<div className="flex" style={{minWidth: '100%'}}>
+								{Array.from({ length: rounds }).map((_, roundIndex) => (
+									<div key={roundIndex} className="flex flex-col" style={{flex: '1 0 250px'}}>
+										<h3 className="text-lg font-semibold mb-2 text-center">
+											{roundIndex === rounds - 1 ? 'Championship' : `Round ${roundIndex + 1}`}
+										</h3>
+										<div className="flex-1 flex flex-col justify-around">
+											{Array.from({ length: Math.pow(2, rounds - roundIndex - 1) }).map((_, matchIndex) => {
+												const matchup = allRounds[roundIndex]?.[matchIndex];
+												return (
+													<div
+														key={`R${roundIndex}M${matchIndex}`}
+														className={`p-2 m-1 rounded shadow ${isDarkMode ? 'bg-darkSecondary text-gray-200' : 'bg-white text-gray-900'} border border-white-600`}
+														style={{height: '100px', width: '230px'}}
+													>
+														{matchup ? (
+															<>
+																<div className="text-lg">
+																	<span className="font-bold mr-2">{matchup.cars[0]?.seed}</span>
+																	{matchup.cars[0]?.name || 'TBD'}
+																</div>
+																<div className="text-center text-sm">vs</div>
+																<div className="text-lg">
+																	<span className="font-bold mr-2">{matchup.cars[1]?.seed}</span>
+																	{matchup.cars[1]?.name || 'TBD'}
+																</div>
+															</>
+														) : (
+															<div className="text-lg text-gray-400 flex items-center justify-center h-full">TBD</div>
+														)}
+													</div>
+												);
+											})}
+										</div>
+									</div>
+								))}
+								<div className="flex flex-col" style={{flex: '1 0 250px'}}>
+									<h3 className="text-lg font-semibold mb-2 text-center">Winner</h3>
+									<div className="flex-1 flex items-center justify-center">
+										<div className={`p-2 m-1 rounded shadow ${isDarkMode ? 'bg-green-700 text-gray-200' : 'bg-green-500 text-white'} border border-gray-600`} style={{height: '100px', width: '230px'}}>
+											<div className="text-lg flex items-center justify-center h-full">
+												{champion ? (
+													<>
+														<span className="font-bold mr-2">{champion.seed}</span>
+														{champion.name}
+													</>
+												) : 'TBD'}
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				);
+			};
+
+            return (
+				<div className={`min-h-screen ${isDarkMode ? 'bg-darkBg text-gray-200' : 'bg-gray-100 text-gray-900'}`}>
+					<NavBar toggleTheme={toggleTheme} isDarkMode={isDarkMode} />
+					<div className="container mx-auto p-4">
+						{!tournamentMode ? (
+							<SetupScreen />
+						) : (
+							<>
+								<div className="mb-4 flex flex-wrap gap-2 no-print items-center justify-between">
+									<div className="flex flex-wrap gap-2 items-center">
+										<button onClick={resetTourney} className="bg-red-500 text-white px-4 py-2 rounded">Reset Tournament</button>
+										{currentRound > 1 && (
+											<>
+												<button onClick={() => setViewingRound(prev => Math.max(1, prev - 1))} className="bg-blue-500 text-white px-4 py-2 rounded">Previous Round</button>
+												<button onClick={() => setViewingRound(prev => Math.min(currentRound, prev + 1))} className="bg-blue-500 text-white px-4 py-2 rounded">Next Round</button>
+											</>
+										)}
+									</div>
+								</div>
+								<RacerList />
+								<h2 className="text-2xl font-bold mb-4">Round {viewingRound}</h2>
+								{allRounds[viewingRound - 1]?.map(matchup => (
+									<RaceTable key={matchup.id} matchup={matchup} isCurrentRound={viewingRound === currentRound} />
+								))}
+								<TournamentBracket />
+							</>
+						)}
+					</div>
+					{champion && <ReactConfetti />}
+				</div>
+			);
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
