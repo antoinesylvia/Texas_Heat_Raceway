@@ -28,7 +28,7 @@ PYGAME_DISPLAY_INDEX = 0
 
 # Weather API configuration used by raceway html
 WEATHER_API_KEY = 'xxxxx'  # Replace with your actual API key
-WEATHER_CITY_ID = 'xxxxx'  # City ID for Irving, Texas
+WEATHER_CITY_ID = '4699066'  # City ID for Irving, Texas
 
 # Irving, Texas coordinates for OpenWeatherMap One Call API 3.0
 IRVING_LAT = 32.8140  # Latitude for Irving, TX
@@ -126,3 +126,4 @@ CLOSED_HOLD_POWER = 100            # Holding power when gate is closed
 
 # Demo settings
 DEMO_CYCLES = 1                    # Number of cycles per demo
+
