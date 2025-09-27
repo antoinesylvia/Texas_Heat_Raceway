@@ -1,0 +1,72 @@
+<!-- Add these buttons to your web interface -->
+
+<!-- Start Race Button (shown when components are ready) -->
+<button id="start-race-btn" onclick="sendUserAction('start_race')" style="display: none;">
+    🏁 START RACE
+</button>
+
+<!-- Skip Intermission Button (shown during intermission) -->
+<button id="skip-intermission-btn" onclick="sendUserAction('skip_intermission')" style="display: none;">
+    ⏭️ SKIP INTERMISSION
+</button>
+
+<!-- Reset Race Button (shown after finished) -->
+<button id="reset-race-btn" onclick="sendUserAction('reset_race')" style="display: none;">
+    🔄 RESET RACE
+</button>
+
+<script>
+// Listen for components ready event
+socket.on('components_ready', function(data) {
+    const startBtn = document.getElementById('start-race-btn');
+    if (data.ready) {
+        startBtn.style.display = 'block';
+        startBtn.innerHTML = '🏁 START RACE';
+        startBtn.disabled = false;
+    } else {
+        startBtn.style.display = 'none';
+    }
+    
+    // Show status message
+    document.getElementById('status-message').textContent = data.message;
+});
+
+// Update button visibility based on race state
+socket.on('race_state_update', function(data) {
+    const skipBtn = document.getElementById('skip-intermission-btn');
+    const resetBtn = document.getElementById('reset-race-btn');
+    const startBtn = document.getElementById('start-race-btn');
+    
+    // Hide all buttons first
+    skipBtn.style.display = 'none';
+    resetBtn.style.display = 'none';
+    
+    // Show appropriate button based on state
+    if (data.status === 'Intermission') {
+        skipBtn.style.display = 'block';
+    } else if (data.status === 'Finished') {
+        resetBtn.style.display = 'block';
+    }
+    
+    // Hide start button once race begins
+    if (data.status !== 'Initialization' && data.status !== 'Reset') {
+        startBtn.style.display = 'none';
+    }
+});
+
+function sendUserAction(actionType) {
+    fetch('/user_action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action_type: actionType })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            console.log(data.message);
+        } else {
+            console.error(data.message);
+        }
+    });
+}
+</script>
