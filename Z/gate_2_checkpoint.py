@@ -713,7 +713,8 @@ def send_car_checkpoint_time(lane, checkpoint_time, race_start_time, elapsed_tim
         'race_number': current_race_number,
         'formatted_race': formatted_race,
         'position': CHECKPOINT_POSITION,
-        'timestamp': time.time()
+        'timestamp': time.time(),
+        'milliseconds': int((checkpoint_time % 1) * 1000)  # Milliseconds for consistency
     }
     
     try:
