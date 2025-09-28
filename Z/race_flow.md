@@ -576,5 +576,11 @@ The system provides F1-level physics analysis, real-time environmental tracking,
 
 **This Hot Wheels racing system is now operating at 100% completion with professional-grade capabilities that exceed most commercial racing telemetry systems!** 🏆🎯🏁
 
-
+![Texas Heat Raceway in Action](https://github.com/antoinesylvia/Texas_Heat_Raceway/raw/54fa975025f74245992fad0b8fe581977904259c/zPics/20240816_225830.jpg)
+![Texas Heat Raceway Setup](https://github.com/antoinesylvia/Texas_Heat_Raceway/raw/f776e179d2016afa6b6089f81d7a35401d6e4603/zPics/20240816_225454.jpg)
+![Texas Heat Raceway in Action](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/fe65548e1f11af1d2177a5cddb442514ac26d65c/zPics/main.png)
+![Texas Heat Raceway Setup](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/bd803615bcc687026d5830eb9bbb2e8be2500581/zPics/config.png)
+![Texas Heat Raceway Setup](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/bd803615bcc687026d5830eb9bbb2e8be2500581/zPics/tourney_bracket1.png)
+![Texas Heat Raceway Setup](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/bd803615bcc687026d5830eb9bbb2e8be2500581/zPics/tourney_bracket2.png)
+![Texas Heat Raceway Setup](https://github.com/antoinesylvia/Texas_Heat_Raceway/blob/bd803615bcc687026d5830eb9bbb2e8be2500581/zPics/tourney_faceoff.png)
 
