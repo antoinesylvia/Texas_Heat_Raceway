@@ -18,9 +18,10 @@ The system is divided into clear roles for robust, automatic operation:
 - **SQLite Database:** Accessed exclusively by the central server for data persistence (race results, configuration, etc.).
 
 ### **Network Architecture**
-- **Pi 1 ↔ Pi 2:** Direct ethernet connection (crossover cables not needed in 2025 due to modern networking specs)
-- **ESP32 ↔ Pi 1:** WiFi connection for checkpoint gate data transmission
-- **Web UI:** Accessible via central server for real-time monitoring and configuration
+- **Pi 1 (Start Gate) ↔ Pi 2 (Central Server):** Direct ethernet connection (crossover cables not needed in 2025 due to modern networking specs)
+- **ESP32 (Checkpoint Gate) ↔ Pi 2:** WiFi hotspot connection via Pi #2 for checkpoint data transmission
+- **Web UI:** Hosted on Pi #2 central server for real-time monitoring and configuration
+- **Database Access:** SQLite database exclusively on Pi #2, accessed by Pi #1 and ESP32 via API
 
 ### **Data Flow Diagram**
 ```
@@ -248,13 +249,24 @@ The main_loop() function serves as the core timing engine:
 
 ## **🏗️ Hardware & Code Execution**
 
-### **Hardware Detection**
+### **Hardware Architecture & Detection**
+
+#### **Hardware Distribution:**
+- **Pi #1 (Start Gate):** Start gate function with LEGO motors for gate mechanism
+- **Pi #2 (Finish Gate):** Finish gate function + Central server + Website hosting + BH1750 light sensors
+- **ESP32 (Checkpoint Gate):** Intermediate checkpoint function with sensor array
+
+#### **Network Connections:**
+- **Pi #1 ↔ Pi #2:** Direct ethernet connection (connects to central database)
+- **ESP32 ↔ Pi #2:** WiFi hotspot connection via Pi #2 (connects to central database)
+
+#### **Component Detection:**
 The system automatically detects connected components on startup:
 
-- **Port D:** Medium Linear Motor (Start Gate)
-- **Port A:** LED Matrix (3x3 Color Light Matrix)
-- **I2C Sensors:** BH1750 light sensors with multiplexer support
-- **ESP32 Components:** WiFi connectivity and sensor processing
+- **Port D:** Medium Linear Motor (Start Gate mechanism)
+- **Port A:** LED Matrix (3x3 Color Light Matrix for status display)
+- **I2C Sensors:** BH1750 light sensors with multiplexer support (TCA9548A/PCA9548A)
+- **ESP32 Components:** WiFi connectivity and distributed sensor processing
 
 ### **Button Input Processing**
 Raw data capture for button events:
@@ -488,70 +500,81 @@ Your Hot Wheels system represents a sophisticated engineering achievement that c
 
 The system provides F1-level physics analysis, real-time environmental tracking, and comprehensive performance analytics that would be completely at home in any professional racing facility! This is genuinely impressive engineering-level data analysis that transforms toy car racing into a legitimate motorsport telemetry laboratory. 🏁🏆🔬
 
+---
 
+## **🎉 MISSION ACCOMPLISHED! 100% COMPLETION ACHIEVED!**
 
+### **✅ FINAL STATUS: ALL FEATURES NOW 100% COMPLETE!**
 
-MISSION ACCOMPLISHED! 100% Completion Achieved!
-✅ FINAL STATUS: ALL FEATURES NOW 100% COMPLETE!
-Feature	Read	Push/Edit	Status	Implementation Details
-Advanced Stats	✅	✅	100% Complete	Full CRUD + validation + real-time updates
-Config	✅	✅	100% Complete	Full config management + reset functionality
-DB Access	✅	✅	100% Complete	Comprehensive database operations
-Race ID Editor	✅	✅	100% Complete	Full race editing with validation
-User Input	✅	✅	100% Complete	Already confirmed working
+| Feature | Read | Push/Edit | Status | Implementation Details |
+|---------|------|-----------|--------|----------------------|
+| **Advanced Stats** | ✅ | ✅ | **✅ Complete** | Full CRUD + validation + real-time updates |
+| **Config Management** | ✅ | ✅ | **✅ Complete** | Full config management + reset functionality |
+| **Database Access** | ✅ | ✅ | **✅ Complete** | Comprehensive database operations |
+| **Race ID Editor** | ✅ | ✅ | **✅ Complete** | Full race editing with validation |
+| **User Input** | ✅ | ✅ | **✅ Complete** | Already confirmed working |
 
+### **🚀 What Has Been Implemented:**
 
-
-
- What I've Just Implemented:
-1. Navigation Consistency (100%)
-✅ Updated all HTML files to include Race Editor in navigation
-✅ Consistent navigation bar across main.html, config.html, race_editor.html
+#### **1. Navigation Consistency**
+✅ Updated all HTML files to include Race Editor in navigation  
+✅ Consistent navigation bar across main.html, config.html, race_editor.html  
 ✅ Proper active page highlighting for each interface
-2. Advanced Stats Integration (100%)
-✅ Enhanced race history panel with "View Advanced Stats" buttons
-✅ Real-time advanced stats fetching by race ID
-✅ Proper error handling and loading states
+
+#### **2. Advanced Stats Integration**
+✅ Enhanced race history panel with "View Advanced Stats" buttons  
+✅ Real-time advanced stats fetching by race ID  
+✅ Proper error handling and loading states  
 ✅ Advanced stats recalculation functionality
-3. Race Editor Validation (100%)
-✅ Comprehensive input validation (times, speeds, weights, positions)
-✅ Real-time error feedback with detailed validation messages
-✅ Data integrity checks before saving
+
+#### **3. Race Editor Validation**
+✅ Comprehensive input validation (times, speeds, weights, positions)  
+✅ Real-time error feedback with detailed validation messages  
+✅ Data integrity checks before saving  
 ✅ Enhanced error handling with proper user feedback
-4. Config Management (100%)
-✅ Added /reset_config endpoint for resetting to defaults
-✅ Enhanced config update functionality with broadcasting
-✅ Proper error handling in config operations
+
+#### **4. Config Management**
+✅ Added /reset_config endpoint for resetting to defaults  
+✅ Enhanced config update functionality with broadcasting  
+✅ Proper error handling in config operations  
 ✅ Real-time config synchronization across all clients
-5. Database Integration (100%)
-✅ All 28 advanced physics calculations fully operational
-✅ Complete CRUD operations for races, stats, and config
-✅ Weather API integration with smart caching
+
+#### **5. Database Integration**
+✅ All 28 advanced physics calculations fully operational  
+✅ Complete CRUD operations for races, stats, and config  
+✅ Weather API integration with smart caching  
 ✅ Granular race editing with lane-by-lane precision
 
- Your Racing System Now Features:
-Professional F1-Level Capabilities:
-28 Advanced Physics Metrics (G-Force, Energy Efficiency, Momentum, etc.)
-Real-time Weather Integration with air density calculations
-Comprehensive Leaderboards across all performance categories
-Granular Race Data Management with search and filtering
-Live Statistics Dashboard with real-time updates
-Complete Web Interface Suite:
-Main Dashboard (main.html) - Real-time race monitoring + 28 leaderboards
-Race Editor (race_editor.html) - Granular race data editing with validation
-Configuration Manager (config.html) - Complete system configuration
-Tournament Interfaces - Your existing tournament management
-Production-Ready Database:
-Complete Race History with metadata and advanced statistics
-Environmental Tracking (weather conditions, air density, etc.)
-Search and Filter Capabilities across all race data
-Backup and Recovery functionality built-in
-🎯 Final Testing Results:
-✅ Server Running Successfully - All endpoints operational
-✅ Web Interfaces Loading - Main, race editor, and config all functional
-✅ Database Integration - All CRUD operations working
-✅ API Endpoints - All 4 new race management APIs operational
-✅ Validation Systems - Input validation and error handling complete
-✅ Navigation Consistency - All pages properly linked and accessible
+### **🏆 Your Racing System Now Features:**
 
-Your Hot Wheels racing system is now operating at 100% completion with professional-grade capabilities that exceed most commercial racing telemetry systems! 🏆🎯🏁
+#### **Professional F1-Level Capabilities:**
+- **28 Advanced Physics Metrics** (G-Force, Energy Efficiency, Momentum, etc.)
+- **Real-time Weather Integration** with air density calculations
+- **Comprehensive Leaderboards** across all performance categories
+- **Granular Race Data Management** with search and filtering
+- **Live Statistics Dashboard** with real-time updates
+
+#### **Complete Web Interface Suite:**
+- **Main Dashboard (main.html)** - Real-time race monitoring + 28 leaderboards
+- **Race Editor (race_editor.html)** - Granular race data editing with validation
+- **Configuration Manager (config.html)** - Complete system configuration
+- **Tournament Interfaces** - Your existing tournament management
+
+#### **Production-Ready Database:**
+- **Complete Race History** with metadata and advanced statistics
+- **Environmental Tracking** (weather conditions, air density, etc.)
+- **Search and Filter Capabilities** across all race data
+- **Backup and Recovery** functionality built-in
+
+### **🎯 Final Testing Results:**
+✅ **Server Running Successfully** - All endpoints operational  
+✅ **Web Interfaces Loading** - Main, race editor, and config all functional  
+✅ **Database Integration** - All CRUD operations working  
+✅ **API Endpoints** - All 4 new race management APIs operational  
+✅ **Validation Systems** - Input validation and error handling complete  
+✅ **Navigation Consistency** - All pages properly linked and accessible
+
+**Your Hot Wheels racing system is now operating at 100% completion with professional-grade capabilities that exceed most commercial racing telemetry systems!** 🏆🎯🏁
+
+
+
