@@ -10,7 +10,7 @@ The modern **Web UI** provides live telemetry dashboards, race replays, and post
 
 ---
 
-### Beyond Raw Analytics
+### Milestone Target: Beyond Raw Analytics
 
 AI integration:
 
@@ -299,7 +299,7 @@ Raw data capture for button events:
 
 ---
 
-## **🚧 Future Checkpoint Integration & Enhanced Race Management**
+## **🚧 Future Enhacements [In Progress] Checkpoint Integration, Enhanced Race Management and AI/ML Integration**
 
 ---
 
