@@ -47,7 +47,7 @@ The system is divided into clear roles for robust, automatic operation:
 - **SQLite Database:** Accessed exclusively by the central server for data persistence (race results, configuration, etc.).
 
 ### **Network Architecture**
-- **Pi 1 (Start Gate) ↔ Pi 2 (Central Server):** Direct ethernet connection (crossover cables not needed in 2025 due to modern networking specs)
+- **Pi 1 (Start Gate) ↔ Pi 2 (Central Server/Finish Gate):** Direct ethernet connection (crossover cables not needed in 2025 due to modern networking specs)
 - **ESP32 (Checkpoint Gate) ↔ Pi 2:** WiFi hotspot connection via Pi #2 for checkpoint data transmission
 - **Web UI:** Hosted on Pi #2 central server for real-time monitoring and configuration
 - **Database Access:** SQLite database exclusively on Pi #2, accessed by Pi #1 and ESP32 via API
