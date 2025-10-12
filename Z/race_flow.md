@@ -363,17 +363,16 @@ Here, **computer vision** replaces NFC scanning — cars are identified through 
 
 ---
 
-## 🧠 Data Flow Diagram
+## 🧠 Race Flow Overview
 
-┌───────────────┐ ┌──────────────────────┐ ┌────────────────────────┐
-│ Pi Camera │ ---> │ CV Model (ResNet) │ ---> │ Central Server (Pi 2) │
-│ (Winner Gate) │ │ (Car Detection) │ │ Metadata Lookup + DB │
-└───────────────┘ └──────────────────────┘ └────────────────────────┘
-│
-▼
-Web UI → “Winner: Twin Mill II”
-(photo 📸 weight ⚖️ car info 🧾 performance 📊)
-
+Pi Camera (Winner Gate)  
+  ↓  
+Computer Vision Model (ResNet – Car Detection)  
+  ↓  
+Central Server (Pi 2 – Metadata Lookup + Database)  
+  ↓  
+Web UI → “Winner: Twin Mill II”  
+(photo 📸 • weight ⚖️ • car info 🧾 • performance 📊)
 
 ---
 
