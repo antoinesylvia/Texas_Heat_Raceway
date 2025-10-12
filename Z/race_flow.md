@@ -425,6 +425,33 @@ The system tracks comprehensive performance across multiple categories:
 | **Advanced Dynamics** | ✅ Jerk, terminal velocity, elasticity | **COMPLETE** |
 | **Environmental Tracking** | ✅ Real-time weather integration | **F1-LEVEL** |
 
+# 🏎️ Texas Heat Raceway — Teaching Kids STEM Through the Science of Gravity Racing (Using F1 Physics)
+
+| **F1 Engineering Area** | **Hot Wheels Equivalent** | **Feasibility** | **Status** | **Notes (Why or Why Not)** |
+|--------------------------|----------------------------|------------------|-------------|-----------------------------|
+| **Energy Management** | Kinetic, potential, and transfer efficiency | ✅ Fully Feasible | ✅ COMPLETE | Mirrors F1 energy systems (potential → kinetic). Computed from track height, time, and mass using BH1750 light sensors, timing gates, and SQLite data. |
+| **Force Analysis** | Force, power, acceleration, and G-force | ✅ Fully Feasible | ✅ COMPLETE | Equivalent to F1 “Forces & Loads.” Acceleration from timing intervals; G-force from Δv/Δt between start, checkpoint (ESP32), and finish gates. Straight-line only. |
+| **Newton’s Laws** | Observed through timing and motion | ✅ Fully Feasible | ✅ COMPLETE | Demonstrated with synchronized start/finish timing using `perf_counter`. Start → Checkpoint → Finish validates all three laws of motion. |
+| **Momentum / Impulse** | Momentum and impact forces | ✅ Fully Feasible | ✅ COMPLETE | Derived like F1 impact studies. Momentum = m × v; impulse from finish-gate deceleration window. |
+| **Efficiency Metrics** | Conversion of energy forms | ✅ Fully Feasible | ✅ COMPLETE | Analog to F1 energy-efficiency ratios. Potential → kinetic conversion logged per race in SQLite, shown on Web UI Advanced Stats. |
+| **Telemetry & Data Systems** | Central DB + JSON + Socket.IO | ✅ Fully Feasible | ✅ COMPLETE | Mirrors F1 telemetry architecture. Pi #2 (Central Server) hosts SQLite DB + Web UI, syncing real-time data via Socket.IO from Pi #1 (Start) and Pi #2 (Finish). |
+| **Environmental Tracking** | Air density, humidity, temperature | ✅ Fully Feasible | ✅ COMPLETE | Matches F1 environmental telemetry. OpenWeatherMap API (One Call 3.0) provides real-time weather data every 5 min. Air-density values are calculated and logged per race for drag and performance correlation. |
+| **Aerodynamics** | Dynamic air density and drag effects | ✅ Fully Feasible | ✅ COMPLETE | Matches F1 aerodynamic analysis in environmental scope. OpenWeatherMap API (One Call 3.0) provides real-time air density (Irving, TX 518 ft). Air-density integration applies moist-air formula ρ = (Pd/Rd×T) + (Pv/Rv×T) for drag and efficiency correlation per race. |
+| **Race Strategy / Analytics** | Performance trends and efficiency curves | ✅ Fully Feasible | ✅ COMPLETE | Implemented through Advanced Leaderboards (28 categories) and Race History Browser. Replicates F1-style post-race analysis. |
+| **Wheel Performance** | Axle friction, rolling resistance, spin efficiency | ⚙️ Partially Feasible | ✅ COMPLETE | Matches F1 tire/wheel analysis. Rolling resistance from kinetic-energy loss between checkpoint and finish; varies by wheel material and alignment. |
+| **Advanced Dynamics** | Jerk, elasticity, terminal velocity | ⚙️ Partially Feasible | ✅ COMPLETE | Jerk calculated from multi-gate acceleration changes; elasticity conceptual (no impact sensor). Terminal velocity measured from checkpoint timing. |
+| **Track Surface Analysis** | Grip and surface temperature | ⚙️ Partially Feasible | 🧩 NOT YET IMPLEMENTED | Aligns with F1 track-surface telemetry. Add a surface-temp probe to correlate grip loss with speed decay under Dallas roof conditions. |
+| **Aerodynamic Balance (Center of Pressure)** | Front / rear drag ratio (via DIY Wind Tunnel) | ⚙️ Partially Feasible | 🧩 NOT YET IMPLEMENTED | A Lego-built wind tunnel with HX711 load cells under axles could measure front/rear weight shift under airflow to approximate downforce distribution. |
+| **Power Unit Thermal Efficiency** | Ambient heat vs performance | ⚙️ Partially Feasible | 🧩 NOT YET IMPLEMENTED | Uses OpenWeatherMap temperature data to correlate ambient heat with race times. Parallel to F1 thermal-efficiency models (without internal temp sensors). |
+| **Thermal Systems** | Brake, wheel, and component temperature | ⚙️ Partially Feasible | 🧩 NOT YET IMPLEMENTED | F1 uses thermocouples for localized temps. Current system logs ambient only; optional infrared or contact sensors could expand coverage. |
+| **Suspension / Ride Height** | Chassis compression or ramp reaction | N/A | — | Hot Wheels cars are rigid (no damper travel). F1 monitors ride height per corner in real time. |
+| **Brake Performance** | Deceleration and finish-zone slowdown | N/A | — | Cars lack brakes; slowdown purely from coasting friction and air drag. |
+| **Steering & Handling** | Yaw rate, cornering, stability | N/A | — | Straight track → no lateral forces or steering dynamics to measure. |
+| **Driver Input / Ergonomics** | Pedal, steering, reaction time | N/A | — | Automated gravity runs — no driver inputs available. |
+| **Pit Strategy / Wheel Degradation Simulation** | Run performance over time | N/A | — | No pit stops or compound changes. Trend analysis only as a teaching concept. |
+
+
+
 ### **🚀 Professional Motorsport Achievement**
 **The Hot Wheels System Achieves F1-Level Performance!**
 
