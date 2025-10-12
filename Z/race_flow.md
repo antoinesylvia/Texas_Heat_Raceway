@@ -301,7 +301,7 @@ Raw data capture for button events:
 
 ## **🚧 Future Enhacements [In Progress] Checkpoint Integration, Enhanced Race Management and AI/ML Integration**
 
----
+The following sections detail how the system’s AI Mode (Winner’s Circle AI) and machine learning components extend beyond raw telemetry to create a self-learning motorsport lab.
 
 # 🤖 AI and Machine Learning Integration
 
@@ -314,6 +314,7 @@ Using **computer vision**, **statistical modeling**, and **anomaly detection**, 
 
 Python-based ML modules on the central server use frameworks such as **scikit-learn**, **PyTorch**, and **TensorFlow Lite** to process telemetry from all gates.  
 These models correlate environmental factors, car design, and race outcomes, transforming the track into an **AI-assisted motorsport lab** that learns and improves with every race.
+
 ---
 
 # 🏁 Winner’s Circle AI (Post-Race Intelligence Phase)
@@ -363,8 +364,6 @@ Here, **computer vision** replaces NFC scanning — cars are identified through 
 ---
 
 ## 🧠 Data Flow Diagram
-
-
 
 ┌───────────────┐ ┌──────────────────────┐ ┌────────────────────────┐
 │ Pi Camera │ ---> │ CV Model (ResNet) │ ---> │ Central Server (Pi 2) │
