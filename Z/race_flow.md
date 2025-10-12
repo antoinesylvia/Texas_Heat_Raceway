@@ -1,8 +1,37 @@
 # Hot Wheels Racing System - Complete Technical Documentation
 
-## **System Overview**
+# 🏎️ System Overview
 
-A professional-grade Hot Wheels racing system featuring F1-level physics analysis, real-time environmental tracking, and comprehensive performance analytics. The system integrates multiple gates, dynamic weather data, and advanced physics calculations to provide motorsport-quality telemetry for toy car racing.
+A professional-grade Hot Wheels racing system featuring F1-level physics analysis, real-time environmental tracking, and AI-driven performance analytics.  
+The system integrates multiple sensor gates, live weather data, and advanced physics calculations to deliver motorsport-quality telemetry for toy car racing.
+
+Built on a distributed **Raspberry Pi network** with a central **SQLite database**, it supports real-time monitoring, historical data visualization, and AI-based analysis such as car recognition, race prediction, and performance correlation.  
+The modern **Web UI** provides live telemetry dashboards, race replays, and post-race analytics comparable to professional motorsport systems.
+
+---
+
+# 🤖 AI and Machine Learning Integration
+
+The system extends beyond traditional telemetry through integrated AI and machine learning for intelligent data analysis and automation.  
+Using **computer vision**, **statistical modeling**, and **anomaly detection**, the system can:
+
+- Visually identify cars (**Hot Wheels iD 2.0**)
+- Detect sensor or timing irregularities in real time
+- Analyze performance trends across different track and environmental conditions
+
+Python-based ML modules on the central server use frameworks such as **scikit-learn**, **PyTorch**, and **TensorFlow Lite** to process telemetry from all gates.  
+These models correlate environmental factors, car design, and race outcomes, transforming the track into an **AI-assisted motorsport lab** that learns and improves with every race.
+
+---
+
+### Beyond Raw Analytics
+
+AI integration:
+
+- Turns the end of each race into an **educational data moment** — science plus story  
+- Links **physical telemetry with visual intelligence**  
+- Creates a **living archive** of race winners complete with photos, weight, conditions, and car information  
+- Transforms the entire setup into an **AI-powered museum** of Hot Wheels performance  
 
 ---
 
