@@ -363,7 +363,7 @@ Here, **computer vision** replaces NFC scanning — cars are identified through 
 
 ---
 
-## 🧠 Race Flow Overview
+## 🧠 Race Flow Overview [Winner’s Circle AI]
 
 Pi Camera (Winner Gate)  
   ↓  
