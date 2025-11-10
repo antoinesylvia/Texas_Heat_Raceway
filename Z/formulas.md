@@ -1,5 +1,5 @@
 Part 1
-Speed
+## Speed
 Speed: Calculate how fast the car is moving.
 
 Why it applies: Understanding the speed of a HotWheels car is crucial for analyzing its overall performance on the track. It helps determine how quickly the car can complete a race and is the basis for further calculations like kinetic energy and momentum.
@@ -12,7 +12,7 @@ Distance (d) the car travels.
 
 Time (t) it takes.
 
-Kinetic Energy
+## Kinetic Energy
 Kinetic Energy: Measure the energy the car possesses due to its motion.
 
 Why it applies: Kinetic energy gives insight into the power the car has as it moves. This is important for understanding how energy is transferred through the car as it accelerates and how much energy is available to overcome friction and other resistive forces.
@@ -25,7 +25,7 @@ Mass (m) of the car.
 
 Speed (v) of the car.
 
-Momentum
+## Momentum
 Momentum: Determine the momentum of the car, which is the product of its mass and velocity.
 
 Why it applies: Momentum helps explain how difficult it is to stop the car once it's in motion. It also plays a role in collisions or when the car interacts with other objects on the track, such as barriers or other cars.
@@ -38,7 +38,7 @@ Mass (m) of the car.
 
 Speed (v) of the car.
 
-Distance Traveled
+## Distance Traveled
 Distance Traveled: Measure how far the car has traveled during a time interval.
 
 Why it applies: Knowing the distance traveled is essential for calculating speed and understanding the car’s performance over various segments of the track. It also helps in planning track layouts and determining the car’s capabilities.
@@ -55,7 +55,7 @@ Time (t) it takes.
 Part 2
 These additional calculations require a checkpoint gate prior to the finish gate and data from part 1.
 
-Acceleration
+## Acceleration
 Acceleration: Calculate the rate of change of the car’s velocity over time.
 
 Why it applies: Acceleration indicates how quickly the car is gaining speed. This is crucial for understanding the car’s performance on different parts of the track, especially after the incline, where the car transitions from gravity-driven acceleration to potentially deceleration on the straightaway.
@@ -70,7 +70,7 @@ Final speed (v_final) at the finish line (from Part 1).
 
 Time interval (Δt) between the checkpoint and the finish line (from Part 1).
 
-Gravitational Acceleration
+## Gravitational Acceleration
 Gravitational Acceleration: Calculate theoretical and effective acceleration due to gravity on an inclined track.
 
 Why it applies: This provides both the theoretical maximum acceleration possible on the track and the actual measured acceleration, allowing analysis of overall efficiency and performance losses without requiring car-specific constants.
@@ -104,7 +104,7 @@ Note: This approach captures all real-world losses (friction, air resistance, tr
 Part 3
 These calculations require acceleration/gravitational acceleration data (from Part 2)!
 
-Force
+## Force
 Force: Calculate the force acting on the car using its mass and acceleration.
 
 Why it applies: Force helps to understand the dynamics of the car as it moves along the track, particularly how much force is required to accelerate the car and overcome resistive forces like friction.
@@ -117,7 +117,7 @@ Mass (m) of the car (from Part 1).
 
 Acceleration (a) of the car (from Part 2).
 
-Potential Energy
+## Potential Energy
 Potential Energy: Measure the stored energy of the car due to its height.
 
 Why it applies: Potential energy at the top of an incline is converted into kinetic energy as the car descends. Understanding this conversion helps in designing track segments where height differences affect the car's speed.
@@ -132,7 +132,7 @@ Gravitational acceleration (g) (from Part 2).
 
 Height (h) of the track at a certain point (from Part 1).
 
-Work Done
+## Work Done
 Work Done: Calculate the work done by a force over a distance.
 
 Why it applies: Work done by the car as it moves can be used to overcome friction and other resistive forces. Understanding this helps in optimizing track design and car performance.
@@ -145,7 +145,7 @@ Force (F) acting on the car (from Part 3).
 
 Distance (d) the car travels (from Part 1).
 
-Power
+## Power
 Power: Determine the rate at which work is done.
 
 Why it applies: Power provides insight into how efficiently the car uses energy over time. High power output indicates that the car is converting energy into motion efficiently, which is key for achieving high speeds on the track.
@@ -158,7 +158,7 @@ Work done (W) (from Part 3).
 
 Time (t) taken to do the work (from Part 1).
 
-G-Force
+## G-Force
 G-Force: Calculate the acceleration relative to gravity that the car experiences.
 
 Why it applies: G-forces are important for understanding how the car behaves in turns and during acceleration or deceleration. High G-forces can affect the car's stability and traction.
@@ -176,7 +176,7 @@ Gravitational acceleration (g) (from Part 2).
 Part 4
 Additional advanced calculations.
 
-Energy Efficiency
+## Energy Efficiency
 Rolling Resistance: Calculate how much energy is lost due to rolling resistance.
 
 Why it applies: Rolling resistance is a key factor in determining how much of the car’s potential and kinetic energy is lost as heat or deformation. Understanding this helps in optimizing the design of the car and track to minimize energy losses.
@@ -275,7 +275,7 @@ Friction Force (from Part 3).
 Part 5
 Final Calculations.
 
-Mechanical Efficiency
+## Mechanical Efficiency
 Mechanical Efficiency: Calculate the efficiency of the car in converting its input energy into useful work.
 
 Why it applies: Understanding mechanical efficiency is crucial for optimizing the design of the car and track to minimize energy losses. It helps in identifying where improvements can be made to reduce friction and other resistive forces.
@@ -286,7 +286,8 @@ Required Data:
 
 Work output (from Part 3: Work Done).
 Total Energy input (from Part 4: Energy Loss).
-Energy Transfer Efficiency
+
+## Energy Transfer Efficiency
 Energy Transfer Efficiency: Measure the efficiency of energy transfer from potential energy at the top of the incline to kinetic energy at the finish line.
 
 Why it applies: This calculation helps in understanding how efficiently the car converts its potential energy into motion, identifying energy losses that occur due to friction, air resistance, and other factors.
@@ -297,7 +298,8 @@ Required Data:
 
 Potential Energy at the Top of Incline (from Part 3: Potential Energy).
 Final Kinetic Energy at the finish line (from Part 4: Energy Loss).
-Coefficient of Friction
+
+## Coefficient of Friction
 Coefficient of Friction: Determine the coefficient of friction between the car's wheels and the track.
 
 Why it applies: The coefficient of friction is key to understanding the interaction between the car and the track surface, which directly impacts speed, stability, and energy loss.
@@ -308,7 +310,8 @@ Required Data:
 
 Friction Force (from Part 3: Frictional Force).
 Normal Force (can be estimated from the weight of the car, g from Part 2: Gravitational Acceleration).
-Energy Conversion Efficiency
+
+## Energy Conversion Efficiency
 Energy Conversion Efficiency: Measure the efficiency of energy conversion from potential energy at the top of the incline to kinetic energy at the finish line.
 
 Why it applies: This calculation will help you understand how efficiently the car converts its potential energy at the top of the incline into kinetic energy as it moves down the straightaway to the finish line, identifying any energy losses.
@@ -321,7 +324,7 @@ Kinetic Energy at the finish line (from Part 1).
 
 Potential Energy at the start (from Part 3).
 
-Impulse and Momentum Change
+## Impulse and Momentum Change
 Impulse and Momentum Change: Calculate the change in momentum of the car as it moves from the incline onto the straightaway.
 
 Why it applies: This calculation helps determine how quickly the car’s momentum changes, particularly how the car accelerates and decelerates on the straightaway after the incline.
