@@ -1,4 +1,4 @@
-Part 1
+# Part 1
 ## Speed
 Speed: Calculate how fast the car is moving.
 
@@ -52,7 +52,7 @@ Speed (v) of the car.
 Time (t) it takes.
 
 ##################################################################################################################################
-Part 2
+# Part 2
 These additional calculations require a checkpoint gate prior to the finish gate and data from part 1.
 
 ## Acceleration
@@ -101,7 +101,7 @@ Note: This approach captures all real-world losses (friction, air resistance, tr
 
 #########################################################################################################################################33
 
-Part 3
+# Part 3
 These calculations require acceleration/gravitational acceleration data (from Part 2)!
 
 ## Force
@@ -173,7 +173,7 @@ Gravitational acceleration (g) (from Part 2).
 
 
 #########################################################################################################################
-Part 4
+# Part 4
 Additional advanced calculations.
 
 ## Energy Efficiency
@@ -272,7 +272,7 @@ Drag Force (from Part 3).
 Friction Force (from Part 3).
 
 ####################################################################################################3
-Part 5
+# Part 5
 Final Calculations.
 
 ## Mechanical Efficiency
