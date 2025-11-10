@@ -43,7 +43,7 @@ Required Data:
 - Speed (v) of the car.
 - Time (t) it takes.
 
-##################################################################################################################################
+___
 # Part 2
 These additional calculations require a checkpoint gate prior to the finish gate and data from part 1.
 
@@ -87,7 +87,7 @@ Measured acceleration from timing data (start, checkpoint, finish times)
 
 Note: This approach captures all real-world losses (friction, air resistance, track imperfections) without requiring car-specific coefficients that vary widely across Hot Wheels models.
 
-#########################################################################################################################################33
+___
 
 # Part 3
 These calculations require acceleration/gravitational acceleration data (from Part 2)!
@@ -150,7 +150,7 @@ Required Data:
 - Gravitational acceleration (g) (from Part 2).
 
 
-#########################################################################################################################
+___
 # Part 4
 Additional advanced calculations.
 
@@ -232,7 +232,7 @@ Required Data:
 - Drag Force (from Part 3).
 - Friction Force (from Part 3).
 
-####################################################################################################3
+___
 # Part 5
 Final Calculations.
 
