@@ -7,10 +7,8 @@ Why it applies: Understanding the speed of a HotWheels car is crucial for analyz
 Formula: v = d / t
 
 Required Data:
-
-Distance (d) the car travels.
-
-Time (t) it takes.
+- Distance (d) the car travels.
+- Time (t) it takes.
 
 ## Kinetic Energy
 Kinetic Energy: Measure the energy the car possesses due to its motion.
@@ -20,10 +18,8 @@ Why it applies: Kinetic energy gives insight into the power the car has as it mo
 Formula: KE = 1/2 * m * v^2
 
 Required Data:
-
-Mass (m) of the car.
-
-Speed (v) of the car.
+- Mass (m) of the car.
+- Speed (v) of the car.
 
 ## Momentum
 Momentum: Determine the momentum of the car, which is the product of its mass and velocity.
@@ -33,10 +29,8 @@ Why it applies: Momentum helps explain how difficult it is to stop the car once 
 Formula: p = m * v
 
 Required Data:
-
-Mass (m) of the car.
-
-Speed (v) of the car.
+- Mass (m) of the car.
+- Speed (v) of the car.
 
 ## Distance Traveled
 Distance Traveled: Measure how far the car has traveled during a time interval.
@@ -46,10 +40,8 @@ Why it applies: Knowing the distance traveled is essential for calculating speed
 Formula: d = v * t
 
 Required Data:
-
-Speed (v) of the car.
-
-Time (t) it takes.
+- Speed (v) of the car.
+- Time (t) it takes.
 
 ##################################################################################################################################
 # Part 2
@@ -63,10 +55,8 @@ Why it applies: Acceleration indicates how quickly the car is gaining speed. Thi
 Formula: a = (v_final - v_initial) / t
 
 Required Data:
-
-Initial speed (v_initial) at the checkpoint (from Part 1).
-
-Final speed (v_final) at the finish line (from Part 1).
+- Initial speed (v_initial) at the checkpoint (from Part 1).
+- Final speed (v_final) at the finish line (from Part 1).
 
 Time interval (Δt) between the checkpoint and the finish line (from Part 1).
 
@@ -90,10 +80,8 @@ Formula: total_losses = a_theoretical - a_effective
 Standard Earth gravity: g ≈ 9.81 m/s²
 
 Required Data:
-
-Incline angle (θ) calculated from height (h) and distance (d): θ = atan(h/d)
-
-Track height and length (from track configuration)
+- Incline angle (θ) calculated from height (h) and distance (d): θ = atan(h/d)
+- Track height and length (from track configuration)
 
 Measured acceleration from timing data (start, checkpoint, finish times)
 
@@ -112,10 +100,8 @@ Why it applies: Force helps to understand the dynamics of the car as it moves al
 Formula: F = m * a
 
 Required Data:
-
-Mass (m) of the car (from Part 1).
-
-Acceleration (a) of the car (from Part 2).
+- Mass (m) of the car (from Part 1).
+- Acceleration (a) of the car (from Part 2).
 
 ## Potential Energy
 Potential Energy: Measure the stored energy of the car due to its height.
@@ -125,10 +111,8 @@ Why it applies: Potential energy at the top of an incline is converted into kine
 Formula: PE = m * g * h
 
 Required Data:
-
-Mass (m) of the car (from Part 1).
-
-Gravitational acceleration (g) (from Part 2).
+- Mass (m) of the car (from Part 1).
+- Gravitational acceleration (g) (from Part 2).
 
 Height (h) of the track at a certain point (from Part 1).
 
@@ -140,10 +124,8 @@ Why it applies: Work done by the car as it moves can be used to overcome frictio
 Formula: W = F * d
 
 Required Data:
-
-Force (F) acting on the car (from Part 3).
-
-Distance (d) the car travels (from Part 1).
+- Force (F) acting on the car (from Part 3).
+- Distance (d) the car travels (from Part 1).
 
 ## Power
 Power: Determine the rate at which work is done.
@@ -153,10 +135,8 @@ Why it applies: Power provides insight into how efficiently the car uses energy 
 Formula: P = W / t
 
 Required Data:
-
-Work done (W) (from Part 3).
-
-Time (t) taken to do the work (from Part 1).
+- Work done (W) (from Part 3).
+- Time (t) taken to do the work (from Part 1).
 
 ## G-Force
 G-Force: Calculate the acceleration relative to gravity that the car experiences.
@@ -166,10 +146,8 @@ Why it applies: G-forces are important for understanding how the car behaves in 
 Formula: G = a / g
 
 Required Data:
-
-Acceleration (a) of the car (from Part 2).
-
-Gravitational acceleration (g) (from Part 2).
+- Acceleration (a) of the car (from Part 2).
+- Gravitational acceleration (g) (from Part 2).
 
 
 #########################################################################################################################
@@ -184,25 +162,20 @@ Why it applies: Rolling resistance is a key factor in determining how much of th
 Formula: E_loss = KE_start - KE_end
 
 Required Data:
+- Kinetic Energy at Bottom of Incline (from Part 1).
+- Final Kinetic Energy on the straightaway (from Part 1).
+- Speed at the bottom of the incline and at the finish gate (from Part 1).
 
-Kinetic Energy at Bottom of Incline (from Part 1).
-
-Final Kinetic Energy on the straightaway (from Part 1).
-
-Speed at the bottom of the incline and at the finish gate (from Part 1).
-
-Energy Loss: Estimate the total energy loss due to various resistive forces.
+## Energy Loss
+Estimate the total energy loss due to various resistive forces.
 Why it applies: Knowing the total energy loss gives insight into how efficient the car is on the track and what improvements can be made to reduce these losses.
 
 Formula: E_loss = PE_top - KE_end
 
 Required Data:
-
-Potential Energy at the Top of Incline (requires Part 3 potential energy calculation).
-
-Final Kinetic Energy (from Part 1).
-
-Kinetic Energy at Bottom of Incline (from Part 1).
+- Potential Energy at the Top of Incline (requires Part 3 potential energy calculation).
+- Final Kinetic Energy (from Part 1).
+- Kinetic Energy at Bottom of Incline (from Part 1).
 
 Coefficient of Restitution
 Bouncing Impact: Measure how much kinetic energy is conserved in a collision.
@@ -212,12 +185,9 @@ Why it applies: The coefficient of restitution is important for understanding ho
 Formula: e = v_final / v_initial
 
 Required Data:
-
-Initial Velocity before Impact (from Part 1).
-
-Final Velocity after Impact (from Part 1).
-
-Mass of the Car (assumed or known) (from Part 1).
+- Initial Velocity before Impact (from Part 1).
+- Final Velocity after Impact (from Part 1).
+- Mass of the Car (assumed or known) (from Part 1).
 
 Vibration Dynamics
 Analyze Stability and Vibrations: Explore how vibrations impact performance.
@@ -225,10 +195,8 @@ Analyze Stability and Vibrations: Explore how vibrations impact performance.
 Why it applies: Vibrations can reduce the car’s speed and stability. By analyzing vibrations, improvements can be made to the car's design or the track surface to reduce these effects.
 
 Required Data:
-
-Acceleration Data at Various Points (from Part 2 if acceleration sensors are used).
-
-Velocity Data (from Part 1).
+- Acceleration Data at Various Points (from Part 2 if acceleration sensors are used).
+- Velocity Data (from Part 1).
 
 Impulse and Jerk
 Impulse: Calculate the change in momentum over time.
@@ -238,10 +206,8 @@ Why it applies: Impulse helps in understanding how quickly the car can accelerat
 Formula: J = F * Δt
 
 Required Data:
-
-Force Applied (from Part 3).
-
-Time Interval (from Part 1).
+- Force Applied (from Part 3).
+- Time Interval (from Part 1).
 
 Initial and Final Velocity (from Part 1).
 
@@ -251,10 +217,8 @@ Why it applies: Jerk is important for analyzing how smooth the car's acceleratio
 Formula: Jerk = Δa / Δt
 
 Required Data:
-
-Acceleration Data at Various Time Points (from Part 2).
-
-Time Intervals (from Part 1).
+- Acceleration Data at Various Time Points (from Part 2).
+- Time Intervals (from Part 1).
 
 Terminal Velocity
 Determine Terminal Velocity: Analyze if the car reaches maximum speed.
@@ -264,12 +228,9 @@ Why it applies: Understanding terminal velocity helps in determining the maximum
 Formula: F_drag + F_friction = ma (where a approaches 0 as v approaches terminal velocity)
 
 Required Data:
-
-Velocity at Different Points on the straightaway (from Part 1).
-
-Drag Force (from Part 3).
-
-Friction Force (from Part 3).
+- Velocity at Different Points on the straightaway (from Part 1).
+- Drag Force (from Part 3).
+- Friction Force (from Part 3).
 
 ####################################################################################################3
 # Part 5
@@ -283,9 +244,8 @@ Why it applies: Understanding mechanical efficiency is crucial for optimizing th
 Formula: η = (Work output / Work input) * 100%
 
 Required Data:
-
-Work output (from Part 3: Work Done).
-Total Energy input (from Part 4: Energy Loss).
+- Work output (from Part 3: Work Done).
+- Total Energy input (from Part 4: Energy Loss).
 
 ## Energy Transfer Efficiency
 Energy Transfer Efficiency: Measure the efficiency of energy transfer from potential energy at the top of the incline to kinetic energy at the finish line.
@@ -295,9 +255,8 @@ Why it applies: This calculation helps in understanding how efficiently the car 
 Formula: η_transfer = (KE_end / PE_top) * 100%
 
 Required Data:
-
-Potential Energy at the Top of Incline (from Part 3: Potential Energy).
-Final Kinetic Energy at the finish line (from Part 4: Energy Loss).
+- Potential Energy at the Top of Incline (from Part 3: Potential Energy).
+- Final Kinetic Energy at the finish line (from Part 4: Energy Loss).
 
 ## Coefficient of Friction
 Coefficient of Friction: Determine the coefficient of friction between the car's wheels and the track.
@@ -307,9 +266,8 @@ Why it applies: The coefficient of friction is key to understanding the interact
 Formula: μ = F_friction / N
 
 Required Data:
-
-Friction Force (from Part 3: Frictional Force).
-Normal Force (can be estimated from the weight of the car, g from Part 2: Gravitational Acceleration).
+- Friction Force (from Part 3: Frictional Force).
+- Normal Force (can be estimated from the weight of the car, g from Part 2: Gravitational Acceleration).
 
 ## Energy Conversion Efficiency
 Energy Conversion Efficiency: Measure the efficiency of energy conversion from potential energy at the top of the incline to kinetic energy at the finish line.
@@ -319,10 +277,8 @@ Why it applies: This calculation will help you understand how efficiently the ca
 Formula: Efficiency = (KE_finish / PE_start) * 100%
 
 Required Data:
-
-Kinetic Energy at the finish line (from Part 1).
-
-Potential Energy at the start (from Part 3).
+- Kinetic Energy at the finish line (from Part 1).
+- Potential Energy at the start (from Part 3).
 
 ## Impulse and Momentum Change
 Impulse and Momentum Change: Calculate the change in momentum of the car as it moves from the incline onto the straightaway.
@@ -332,9 +288,6 @@ Why it applies: This calculation helps determine how quickly the car’s momentu
 Formula: J = Δp = F * Δt
 
 Required Data:
-
-Force applied during acceleration or deceleration (from Part 3).
-
-Time interval (Δt) over which the force is applied (from Part 1).
-
-Change in momentum (Δp) (from Part 1 and Part 2). Requires checkpoint gate data.
+- Force applied during acceleration or deceleration (from Part 3).
+- Time interval (Δt) over which the force is applied (from Part 1).
+- Change in momentum (Δp) (from Part 1 and Part 2). Requires checkpoint gate data.
