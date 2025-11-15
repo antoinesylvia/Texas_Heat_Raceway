@@ -268,12 +268,22 @@ The main_loop() function serves as the core timing engine:
 
 #### **Hardware Distribution:**
 - **Pi #1 (Start Gate):**
--- Start gate function with LEGO motors for gate mechanism
+  - Function: Start gate function with LEGO motors for gate mechanism
+    - Build HAT - LEGO Robotics
+      - Port D: Medium Linear Motor
+      - Port A: LED Matrix (3x3 Color Display)
 - **Pi #2 (Finish Gate):**
--- Finish gate function + Central server + Website hosting
----  Adafruit BH1750 Light Sensors, SparkFun Qwiic Mux Breakout - TCA9548A, Adafruit AHT20 - Temperature & Humidity Sensor Breakout Board, Adafruit MLX90632 FIR Remote Thermal Temperature Sensor - Medical Grade, SparkFun Qwiic Scale - NAU7802 Small Breakout board Read load cells (Load Cell Weight Sensor HX711 )
+  - Function: Finish gate function + Central server + Website hosting
+    - SparkFun Qwiic Mux Breakout - TCA9548A
+      - Adafruit BH1750 Light Sensors
+      - Adafruit AHT20 - Temperature & Humidity Sensor Breakout Board
+      - Adafruit MLX90632 FIR Remote Thermal Temperature Sensor - Medical Grade
+      - SparkFun Qwiic Scale - NAU7802 Small Breakout board Read load cells (Load Cell Weight Sensor HX711 )
+      - Adafruit LED Arcade Button 1x4 - STEMMA QT I2C Breakout
 - **ESP32 (Checkpoint Gate):**
--- Intermediate checkpoint function with sensor array
+  - Function: Intermediate checkpoint function with sensor array
+    - SparkFun Qwiic Mux Breakout - TCA9548A
+      - Adafruit BH1750 Light Sensors 
 
 #### **Network Connections:**
 - **Pi #1 ↔ Pi #2:** Direct ethernet connection (connects to central database)
