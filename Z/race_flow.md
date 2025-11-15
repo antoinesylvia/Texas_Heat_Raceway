@@ -267,9 +267,13 @@ The main_loop() function serves as the core timing engine:
 ### **Hardware Architecture & Detection**
 
 #### **Hardware Distribution:**
-- **Pi #1 (Start Gate):** Start gate function with LEGO motors for gate mechanism
-- **Pi #2 (Finish Gate):** Finish gate function + Central server + Website hosting + BH1750 light sensors
-- **ESP32 (Checkpoint Gate):** Intermediate checkpoint function with sensor array
+- **Pi #1 (Start Gate):**
+-- Start gate function with LEGO motors for gate mechanism
+- **Pi #2 (Finish Gate):**
+-- Finish gate function + Central server + Website hosting
+---  Adafruit BH1750 Light Sensors, SparkFun Qwiic Mux Breakout - TCA9548A, Adafruit AHT20 - Temperature & Humidity Sensor Breakout Board, Adafruit MLX90632 FIR Remote Thermal Temperature Sensor - Medical Grade, SparkFun Qwiic Scale - NAU7802 Small Breakout board Read load cells (Load Cell Weight Sensor HX711 )
+- **ESP32 (Checkpoint Gate):**
+-- Intermediate checkpoint function with sensor array
 
 #### **Network Connections:**
 - **Pi #1 ↔ Pi #2:** Direct ethernet connection (connects to central database)
@@ -525,10 +529,10 @@ The system tracks comprehensive performance across multiple categories:
 | **Race Strategy / Analytics** | Performance trends and efficiency curves | ✅ Fully Feasible | ✅ COMPLETE | Implemented through Advanced Leaderboards (28 categories) and Race History Browser. Replicates F1-style post-race analysis. |
 | **Wheel Performance** | Axle friction, rolling resistance, spin efficiency | ⚙️ Partially Feasible | ✅ COMPLETE | Matches F1 tire/wheel analysis. Rolling resistance from kinetic-energy loss between checkpoint and finish; varies by wheel material and alignment. |
 | **Advanced Dynamics** | Jerk, elasticity, terminal velocity | ⚙️ Partially Feasible | ✅ COMPLETE | Jerk calculated from multi-gate acceleration changes; elasticity conceptual (no impact sensor). Terminal velocity measured from checkpoint timing. |
-| **Track Surface Analysis** | Grip and surface temperature | ⚙️ Partially Feasible | 🧩 NOT YET IMPLEMENTED | Aligns with F1 track-surface telemetry. Add a surface-temp probe to correlate grip loss with speed decay under Dallas roof conditions. |
+| **Track Surface Analysis** | Grip and surface temperature | ✅ Fully Feasible| 🧩 NOT YET IMPLEMENTED | Aligns with F1 track-surface telemetry. Add a surface-temp probe to correlate grip loss with speed decay under Dallas roof conditions. Adafruit MLX90632 FIR thermal sensor can record surface temperature on the track straight. Correlate heat with friction loss and lap-time drift. |
 | **Aerodynamic Balance (Center of Pressure)** | Front / rear drag ratio (via DIY Wind Tunnel) | ⚙️ Partially Feasible | 🧩 NOT YET IMPLEMENTED | A Lego-built wind tunnel with HX711 load cells under axles could measure front/rear weight shift under airflow to approximate downforce distribution. |
-| **Power Unit Thermal Efficiency** | Ambient heat vs performance | ⚙️ Partially Feasible | 🧩 NOT YET IMPLEMENTED | Uses OpenWeatherMap temperature data to correlate ambient heat with race times. Parallel to F1 thermal-efficiency models (without internal temp sensors). |
-| **Thermal Systems** | Brake, wheel, and component temperature | ⚙️ Partially Feasible | 🧩 NOT YET IMPLEMENTED | F1 uses thermocouples for localized temps. Current system logs ambient only; optional infrared or contact sensors could expand coverage. |
+| **Power Unit Thermal Efficiency** | Ambient heat vs performance | ✅ Fully Feasible | 🧩 NOT YET IMPLEMENTED | Combines Adafruit AHT20 temp + humidity sensor with backup from OpenWeatherMap API. Simulates F1-style thermal-efficiency analysis without internal sensors. |
+| **Thermal Systems** | Brake, wheel, and component temperature | N/A | - |Hot Wheels have no brakes or power units. FIR readings capture environment only, not wheel or component heat. |
 | **Suspension / Ride Height** | Chassis compression or ramp reaction | N/A | — | Hot Wheels cars are rigid (no damper travel). F1 monitors ride height per corner in real time. |
 | **Brake Performance** | Deceleration and finish-zone slowdown | N/A | — | Cars lack brakes; slowdown purely from coasting friction and air drag. |
 | **Steering & Handling** | Yaw rate, cornering, stability | N/A | — | Straight track → no lateral forces or steering dynamics to measure. |
