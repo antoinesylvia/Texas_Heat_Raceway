@@ -269,21 +269,26 @@ The main_loop() function serves as the core timing engine:
 #### **Hardware Distribution:**
 - **Pi #1 (Start Gate):**
   - Function: Start gate function with LEGO motors for gate mechanism
+    - LEGO Remote Control 88010
     - Build HAT - LEGO Robotics
-      - Port D: Medium Linear Motor
-      - Port A: LED Matrix (3x3 Color Display)
+      - Port A: LED Matrix (3x3 Color Display) - Gate Lift 
+      - Port D: LEGO Medium Linear Motor 88008 - Countdown Lights
+      - Port B: LEGO Medium Linear Motor 88008 - Car lift
+      - Port C: LEGO Medium Linear Motor 88008 - Car 45 Degree Drop (off lift)
+      
 - **Pi #2 (Finish Gate):**
   - Function: Finish gate function + Central server + Website hosting
-    - SparkFun Qwiic Mux Breakout - TCA9548A
-      - Adafruit BH1750 Light Sensors
-      - Adafruit AHT20 - Temperature & Humidity Sensor Breakout Board
-      - Adafruit MLX90632 FIR Remote Thermal Temperature Sensor - Medical Grade
-      - SparkFun Qwiic Scale - NAU7802 Small Breakout board Read load cells (Load Cell Weight Sensor HX711 )
-      - Adafruit LED Arcade Button 1x4 - STEMMA QT I2C Breakout
+    - Lego Remote Control 88010 
+    - I2C/QWIIC - SparkFun Qwiic Mux Breakout - TCA9548A
+      - I2C/QWIIC - Adafruit BH1750 Light Sensors (x6)
+      - I2C/QWIIC - Adafruit AHT20 - Temperature & Humidity Sensor Breakout Board
+      - I2C/QWIIC - Adafruit MLX90632 FIR Remote Thermal Temperature Sensor - Medical Grade
+      - I2C/QWIIC - SparkFun Qwiic Scale - NAU7802 Small Breakout board Read load cells (Load Cell Weight Sensor HX711 )
+      - I2C/QWIIC - Adafruit LED Arcade Button 1x4 - STEMMA QT I2C Breakout
 - **ESP32 (Checkpoint Gate):**
   - Function: Intermediate checkpoint function with sensor array
-    - SparkFun Qwiic Mux Breakout - TCA9548A
-      - Adafruit BH1750 Light Sensors 
+    - I2C/QWIIC - SparkFun Qwiic Mux Breakout - TCA9548A
+      - I2C/QWIIC - Adafruit BH1750 Light Sensors (x6)
 
 #### **Network Connections:**
 - **Pi #1 ↔ Pi #2:** Direct ethernet connection (connects to central database)
