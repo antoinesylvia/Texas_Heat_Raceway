@@ -4,8 +4,7 @@
 
 A professional-grade Hot Wheels racing system featuring F1-level physics analysis, real-time environmental tracking, and AI-driven performance analytics. The system integrates multiple sensor gates, live weather data, and advanced physics calculations to deliver motorsport-quality telemetry for toy car racing.
 
-Built on a distributed **Raspberry Pi network** with a central **SQLite database**, it supports real-time monitoring, historical data visualization, and AI-based analysis such as car recognition, race prediction, and performance correlation.  
-The modern **Web UI** provides live telemetry dashboards, race replays, and post-race analytics comparable to professional motorsport systems. Working to add a machine learning component, see information below.
+Built on a distributed **Raspberry Pi network** with a central **SQLite database**, it supports real-time monitoring, historical data visualization, and AI-based analysis such as car recognition, race prediction, and performance correlation. The modern **Web UI** provides live telemetry dashboards, race replays, and post-race analytics comparable to professional motorsport systems. Working to add a machine learning component, see information below.
 
 ---
 
