@@ -267,6 +267,7 @@ The main_loop() function serves as the core timing engine:
 #### **Hardware Distribution:**
 - **Pi #1 (Start Gate):**
   - Function: Start gate function with LEGO motors for gate mechanism
+    - 7 Inch IPS LCD Touch Screen - 1024×600 Resolution
     - LEGO Remote Control 88010
     - Build HAT - LEGO Robotics
       - Port A: LED Matrix (3x3 Color Display) - Gate Lift 
@@ -276,6 +277,7 @@ The main_loop() function serves as the core timing engine:
       
 - **Pi #2 (Finish Gate):**
   - Function: Finish gate function + Central server + Website hosting
+    - Waveshare 11.9inch Capacitive Touch Screen LCD - 1480x320 Resolution
     - Lego Remote Control 88010 
     - I2C/QWIIC - SparkFun Qwiic Mux Breakout - TCA9548A
       - I2C/QWIIC - Adafruit BH1750 Light Sensors (x6)
