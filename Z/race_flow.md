@@ -283,7 +283,7 @@ The main_loop() function serves as the core timing engine:
       - I2C/QWIIC - Adafruit MLX90632 FIR Remote Thermal Temperature Sensor - Medical Grade
       - I2C/QWIIC - SparkFun Qwiic Scale - NAU7802 Small Breakout board Read load cells (Load Cell Weight Sensor HX711 )
       - I2C/QWIIC - Adafruit LED Arcade Button 1x4 - STEMMA QT I2C Breakout
-- **ESP32 (Checkpoint Gate):**
+- **FLIP_C3 ESP32 (Checkpoint Gate):**
   - Function: Intermediate checkpoint function with sensor array
     - I2C/QWIIC - SparkFun Qwiic Mux Breakout - TCA9548A
       - I2C/QWIIC - Adafruit BH1750 Light Sensors (x6)
