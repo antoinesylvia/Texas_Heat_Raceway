@@ -80,6 +80,21 @@ The race follows a specific, looping sequence:
 7. **User Action ("RESET TO INIT"):** A user command moves the state to `Initialization`.
 8. **Loop:** The process loops back to step 2 to begin the next race.
 
+### **Technical State Flow & Component Responsibilities**
+```
+User Action → central_server.py → Broadcast 'Initialization'
+↓
+gate_1_start.py + gate_3_finish.py → Report component status → central_server.py → central_server_database.py
+↓
+central_server.py → Validates both gates ready → Advance to 'Ready'
+↓
+gate_1_start.py → Auto-drives: 'Ready' → 'Countdown' → 'Racing' → Timing events → central_server_database.py
+↓
+gate_3_finish.py → Auto-drives: 'Racing' → 'Placement' → 'Finished' → Race results → central_server_database.py
+                                    ↓
+                               28 Physics calculations ← central_server_database.py
+```
+
 ### **State Transition Logic**
 
 - **Initialization → Ready:** The central server requires an "OK" component status from **both** the Start and Finish gates.
@@ -125,6 +140,103 @@ The system implements all major physics principles across seven key areas:
 5. **Efficiency Metrics:** Energy transfer and conversion efficiency
 6. **Gravitational Analysis:** Theoretical vs measured performance ratios
 7. **Environmental Conditions:** Real-time air density and weather tracking
+
+---
+
+## **📁 Python Scripts & Code Architecture**
+
+### **🏁 Central System Scripts**
+
+#### **1. `central_server.py` - The Brain of the Operation**
+**Function:** Acts as the authoritative state manager and web server
+- **Flask Web Server:** Hosts the main UI at Pi #2 (finish gate location)
+- **Socket.IO Hub:** Manages real-time communication with all gates
+- **State Management:** Validates all race state transitions but doesn't initiate them
+- **API Provider:** Serves all HTTP REST endpoints for data operations
+
+**Key Interactions:**
+- Receives component status from both gates during initialization
+- Validates state transitions requested by gates via `'gate_status_update'` events
+- Broadcasts state changes to all connected gates
+- Stores all race data to SQLite database
+- Serves web UI for race monitoring and configuration
+
+#### **2. `central_server_database.py` - The Physics & Data Brain**
+**Function:** Advanced database abstraction layer and complete physics calculation engine
+
+**Core Database Management:**
+- **RaceDatabase Class:** Thread-safe SQLite operations with proper connection pooling
+- **Table Management:** Creates and maintains 8 specialized tables
+- **Data Persistence:** Handles all CRUD operations for race data, configuration, and analytics
+
+**Advanced Physics Implementation:**
+- **Complete Formula Coverage:** Implements all 28+ physics calculations from formulas.md
+- **5-Part Physics Engine:** Basic measurements → Acceleration analysis → Force calculations → Advanced dynamics → Efficiency metrics
+- **Enhanced Gravitational Analysis:** Theoretical vs measured acceleration with gravity efficiency ratios
+- **Environmental Integration:** Real-time weather API integration with moist air formula
+
+**Key Interactions:**
+- Called exclusively by `central_server.py` for ALL database operations
+- Provides advanced leaderboards via `/get_advanced_leaderboards` endpoint
+- Transforms raw timing data into comprehensive motorsport-grade analytics
+
+### **🚪 Gate Control Scripts**
+
+#### **3. `gate_1_start.py` - Race Initiator (Pi #1)**
+**Function:** Start gate controller that drives early race phases
+- **Hardware Control:** Manages LEGO motors, LED matrix, and gate mechanisms
+- **Race Flow Driver:** Automatically advances `Ready` → `Countdown` → `Racing`
+- **Component Health:** Reports motor, BuildHAT, and audio system status
+- **Demo Mode:** Supports `--demo` flag for testing without full system
+
+#### **4. `gate_3_finish.py` - Race Concluder & Central Server Host (Pi #2)**
+**Function:** Finish gate controller AND central server host
+- **Dual Role:** Both finish gate hardware control AND central server hosting
+- **Sensor Array:** Manages 6-lane BH1750 light sensors via I2C multiplexer
+- **Race Completion:** Drives `Racing` → `Placement` → `Finished` → `Intermission` → `Reset`
+- **Live Timing:** Provides 10Hz real-time race timing display
+- **Physics Analysis:** Calculates advanced race statistics and environmental data
+
+#### **5. `gate_2_checkpoint.py` - Intermediate Timing (ESP32)**
+**Function:** Checkpoint gate providing intermediate race timing
+- **ESP32 Platform:** WiFi-based sensor-only implementation (no motor control)
+- **Crash Detection:** Monitors for cars that don't reach checkpoint within expected time
+- **Physics Enhancement:** Provides critical intermediate timing for acceleration calculations
+- **Sensor Sophistication:** Same advanced detection algorithms as finish gate
+
+### **📊 Communication Flow & Data Architecture**
+
+#### **Race State Flow:**
+```
+User Action → central_server.py → Broadcast 'Initialization'
+↓
+gate_1_start.py + gate_3_finish.py → Report component status
+↓
+central_server.py → Validates both gates ready → Advance to 'Ready'
+↓
+gate_1_start.py → Auto-drives: 'Ready' → 'Countdown' → 'Racing'
+↓
+gate_3_finish.py → Auto-drives: 'Racing' → 'Placement' → 'Finished' → 'Intermission'
+```
+
+#### **Data Persistence Flow:**
+```
+Race Results → gate_3_finish.py → central_server.py → central_server_database.py → SQLite
+Physics Calculations ← central_server_database.py ← Advanced race analysis
+Web UI ← central_server.py ← Real-time updates via Socket.IO
+```
+
+### **🔗 Key Integration Points:**
+
+1. **Socket.IO Events:** All gates communicate via standardized events (`'gate_status_update'`, `'gate_timing_event'`, `'component_status_update'`)
+
+2. **HTTP APIs:** Gates fetch configuration and send race data via REST endpoints (`/get_config`, `/save_results`, etc.)
+
+3. **Database Abstraction:** Only `central_server.py` accesses the database through `central_server_database.py` - gates never directly touch SQLite
+
+4. **Configuration Management:** 3-tier fallback system (Central DB → Local YAML → Hardcoded defaults) with real-time updates
+
+5. **Physics Integration:** Checkpoint gate enables advanced calculations from formulas.md Parts 2-5, transforming basic timing into comprehensive F1-level analytics
 
 ---
 
