@@ -279,16 +279,18 @@ The main_loop() function serves as the core timing engine:
   - Function: Finish gate function + Central server + Website hosting
     - Waveshare 11.9inch Capacitive Touch Screen LCD - 1480x320 Resolution
     - Lego Remote Control 88010 
-    - I2C/QWIIC - SparkFun Qwiic Mux Breakout - TCA9548A
-      - I2C/QWIIC - Adafruit BH1750 Light Sensors (x6)
-      - I2C/QWIIC - Adafruit AHT20 - Temperature & Humidity Sensor Breakout Board
-      - I2C/QWIIC - Adafruit MLX90632 FIR Remote Thermal Temperature Sensor - Medical Grade
-      - I2C/QWIIC - SparkFun Qwiic Scale - NAU7802 Small Breakout board Read load cells (Load Cell Weight Sensor HX711 )
-      - I2C/QWIIC - Adafruit LED Arcade Button 1x4 - STEMMA QT I2C Breakout
+    - I2C/QWIIC - Adafruit MCP2221A Breakout - General Purpose USB to GPIO ADC I2C
+      - I2C/QWIIC - SparkFun Qwiic Mux Breakout - TCA9548A
+        - I2C/QWIIC - Adafruit BH1750 Light Sensors (x6)
+        - I2C/QWIIC - Adafruit AHT20 - Temperature & Humidity Sensor Breakout Board
+        - I2C/QWIIC - Adafruit MLX90632 FIR Remote Thermal Temperature Sensor - Medical Grade
+        - I2C/QWIIC - SparkFun Qwiic Scale - NAU7802 Small Breakout board Read load cells (Load Cell Weight Sensor HX711 )
+        - I2C/QWIIC - Adafruit LED Arcade Button 1x4 - STEMMA QT I2C Breakout
 - **FLIP_C3 ESP32 (Checkpoint Gate):**
   - Function: Intermediate checkpoint function with sensor array
-    - I2C/QWIIC - SparkFun Qwiic Mux Breakout - TCA9548A
-      - I2C/QWIIC - Adafruit BH1750 Light Sensors (x6)
+    - I2C/QWIIC - Adafruit MCP2221A Breakout - General Purpose USB to GPIO ADC I2C
+      - I2C/QWIIC - SparkFun Qwiic Mux Breakout - TCA9548A
+        - I2C/QWIIC - Adafruit BH1750 Light Sensors (x6)
 
 #### **Network Connections:**
 - **Pi #1 ↔ Pi #2:** Direct ethernet connection (connects to central database)
