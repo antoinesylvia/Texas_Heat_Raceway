@@ -87,6 +87,30 @@ Measured acceleration from timing data (start, checkpoint, finish times)
 
 Note: This approach captures all real-world losses (friction, air resistance, track imperfections) without requiring car-specific coefficients that vary widely across Hot Wheels models.
 
+## Enhanced Gravitational Analysis
+**Theoretical vs Measured Acceleration Analysis**
+
+Why it applies: This provides both the theoretical maximum acceleration possible on the track and the actual measured acceleration, allowing analysis of overall efficiency and performance losses without requiring car-specific constants.
+
+**Theoretical Gravitational Acceleration:**
+Formula: a_theoretical = g·sin(θ)
+
+**Effective Gravitational Acceleration:**
+Formula: a_effective = measured acceleration from timing data
+
+**Gravity Efficiency Ratio:**
+Formula: efficiency = a_effective / a_theoretical
+
+**Total Loss Acceleration:**
+Formula: total_losses = a_theoretical - a_effective
+
+Required Data:
+- Track height and length for angle calculation: θ = atan(h/d)
+- Measured acceleration from start → checkpoint → finish timing
+- Standard Earth gravity: g ≈ 9.81 m/s²
+
+Note: This approach captures all real-world losses (friction, air resistance, track imperfections) without requiring car-specific coefficients that vary widely across Hot Wheels models.
+
 ___
 
 # Part 3
@@ -291,3 +315,130 @@ Required Data:
 - Force applied during acceleration or deceleration (from Part 3).
 - Time interval (Δt) over which the force is applied (from Part 1).
 - Change in momentum (Δp) (from Part 1 and Part 2). Requires checkpoint gate data.
+
+___
+# Part 6: Enhanced Gravitational Physics
+
+## Theoretical vs Measured Performance Analysis
+**Advanced Gravitational Analysis for Professional-Grade Racing Telemetry**
+
+Why it applies: This provides F1-level physics analysis by comparing theoretical maximum performance against actual measured performance, capturing all real-world losses without requiring car-specific constants that vary across Hot Wheels models.
+
+### Track Angle Calculation
+**Track Incline Physics:**
+Formula: θ = atan(height / length)
+
+Required Data:
+- Track height (vertical rise) in meters
+- Track length (horizontal distance) in meters
+
+### Theoretical Gravitational Component
+**Maximum Possible Acceleration:**
+Formula: a_theoretical = g × sin(θ)
+
+Where:
+- g = 9.81 m/s² (standard Earth gravity)
+- θ = track angle from track geometry
+
+### Measured Acceleration Analysis
+**Actual Performance from Timing Data:**
+Formula: a_measured = (v_final² - v_initial²) / (2 × distance)
+
+Required Data:
+- Initial velocity (v_initial) from start gate timing
+- Final velocity (v_final) from checkpoint/finish timing
+- Distance traveled between measurement points
+
+### Gravity Efficiency Ratio
+**Overall System Performance:**
+Formula: efficiency_ratio = a_measured / a_theoretical
+
+This ratio captures:
+- Rolling resistance losses
+- Air resistance losses
+- Track surface friction
+- Wheel alignment efficiency
+- Overall mechanical losses
+
+### Total Loss Acceleration
+**Quantified Performance Loss:**
+Formula: total_losses = a_theoretical - a_measured
+
+This represents the total acceleration lost to all real-world factors, providing a universal performance metric that works across all Hot Wheels car designs.
+
+___
+# Part 7: Environmental Integration
+
+## Dynamic Air Density Calculation
+Real-time air density calculation using weather API integration for F1-level environmental tracking.
+
+Why it applies: Air density affects drag forces and overall performance. F1 teams monitor atmospheric conditions for aerodynamic performance correlation, and this system provides the same precision.
+
+### Moist Air Formula
+**Professional Weather Integration:**
+Formula: ρ = (P_d / R_d × T) + (P_v / R_v × T)
+
+Where:
+- ρ = Air density (kg/m³)
+- P_d = Partial pressure of dry air (Pa)
+- P_v = Partial pressure of water vapor (Pa)  
+- R_d = Specific gas constant for dry air = 287.058 J/(kg·K)
+- R_v = Specific gas constant for water vapor = 461.495 J/(kg·K)
+- T = Temperature (K)
+
+### Saturation Vapor Pressure Calculation
+**Humidity Integration:**
+Formula: P_sat = 611.2 × 10^((7.5 × T_c) / (237.7 + T_c))
+
+Where:
+- P_sat = Saturation vapor pressure (Pa)
+- T_c = Temperature in Celsius
+
+### Actual Vapor Pressure
+**Relative Humidity Integration:**
+Formula: P_v = (humidity_percent / 100) × P_sat
+
+### Partial Pressure of Dry Air
+**Dry Air Component:**
+Formula: P_d = P_total - P_v
+
+Where:
+- P_total = Total atmospheric pressure (Pa)
+
+Required Data:
+- Real-time temperature, pressure, humidity from OpenWeatherMap API
+- Location-specific coordinates (Irving, TX: 32.8140, -96.9489)
+- Elevation correction (518 ft above sea level)
+- API update interval (default: 300 seconds for quota conservation)
+
+## Environmental Performance Correlation
+Track how atmospheric conditions affect race performance with F1-level precision.
+
+### Air Density Impact Analysis
+**Seasonal Performance Variations:**
+
+**Hot Summer Conditions (95°F/35°C):**
+- Air density: ~1.15 kg/m³
+- Effect: Less drag → Faster times
+- Performance improvement: +2-3%
+
+**Cool Winter Conditions (41°F/5°C):**
+- Air density: ~1.25 kg/m³  
+- Effect: More drag → Slower times
+- Performance reduction: -2-3%
+
+**Moderate Conditions:**
+- Air density: ~1.195 kg/m³
+- Effect: Baseline performance reference
+
+### Weather-Corrected Performance Analysis
+**F1-Style Environmental Correction:**
+Formula: corrected_time = actual_time × (reference_air_density / current_air_density)^0.5
+
+This allows fair comparison of race results across different weather conditions, just like professional motorsport analytics.
+
+Required Data:
+- Air density for each race (from Part 7 calculations)
+- Race times and speeds (from Parts 1-2)
+- Environmental conditions (temperature, humidity, pressure)
+- Reference air density for normalization (1.195 kg/m³)
