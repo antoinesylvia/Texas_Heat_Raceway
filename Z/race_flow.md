@@ -291,6 +291,7 @@ The main_loop() function serves as the core timing engine:
     - I2C/QWIIC - Adafruit MCP2221A Breakout - General Purpose USB to GPIO ADC I2C
       - I2C/QWIIC - SparkFun Qwiic Mux Breakout - TCA9548A
         - I2C/QWIIC - Adafruit BH1750 Light Sensors (x6)
+        - I2C/QWIIC - Adafruit PCF8575 I2C 16 GPIO Expander Breakout 
 
 #### **Network Connections:**
 - **Pi #1 ↔ Pi #2:** Direct ethernet connection (connects to central database)
