@@ -25,8 +25,8 @@ AI integration:
 The system is divided into clear roles for robust, automatic operation:
 
 - **Central Server:** Acts as the authoritative state manager and database interface. It validates all state transitions but does not initiate them itself during a race.
-- **Start Gate (Pi 1):** Responsible for hardware health checks and driving the early phases of the race (`Ready` to `Racing`).
-- **Finish Gate (Pi 2):** Responsible for hardware health checks and driving the later phases of the race (`Racing` to `Reset`).
+- **Start Gate (Pi #1):** Responsible for hardware health checks and driving the early phases of the race (`Ready` to `Racing`).
+- **Finish Gate (Pi #2):** Responsible for hardware health checks and driving the later phases of the race (`Racing` to `Reset`).
 - **Checkpoint Gate (ESP32):** Provides intermediate timing data and crash detection capabilities.
 - **SQLite Database:** Accessed exclusively by the central server for data persistence (race results, configuration, etc.).
 
@@ -298,12 +298,7 @@ The main_loop() function serves as the core timing engine:
 - **ESP32 ↔ Pi #2:** WiFi hotspot connection via Pi #2 (connects to central database)
 
 #### **Component Detection:**
-The system automatically detects connected components on startup:
-
-- **Port D:** Medium Linear Motor (Start Gate mechanism)
-- **Port A:** LED Matrix (3x3 Color Light Matrix for status display)
-- **I2C Sensors:** BH1750 light sensors with multiplexer support (TCA9548A/PCA9548A)
-- **ESP32 Components:** WiFi connectivity and distributed sensor processing
+The system automatically detects connected components on startup.
 
 ### **Button Input Processing**
 Raw data capture for button events:
